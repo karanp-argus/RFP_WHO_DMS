@@ -565,6 +565,61 @@ Four decisions worth recording:
 
 **Also done when** all four §2.4 replacements hold under use: scrolling to 2024 × `HF.nec` keeps both headers pinned; removing a filter chip narrows the grid and updates the URL; pasting the link into a fresh tab restores the same selection; and opening metadata on a cell leaves the grid mounted with that cell still selected. Capture a screenshot of the finished workbook here — Phase 8 needs it for the before/after beat.
 
+*Phase 4 outcome:* the module is 14 files across `src/domain/workbook/` (pure), `src/stores/`,
+`src/hooks/` and `src/modules/workbooks/`, with **37 new domain tests** (166 total) and a
+34-check browser harness, `npm run verify:workbook`, that drives the "done when" sentence end
+to end and comes back clean with no console errors. Screenshots in `artifacts/shots-p4/`.
+
+**The day-1 spike answered both questions, and the second answer was better than expected.**
+
+1. **The nested `react-dom@18` was not inert — it crashed every route.** DEPENDENCIES.md §7.1
+   had it recorded as a latent bundle-size concern. It was not: `react-resize-detector@7.1.2`
+   pulls a React 18 `react-dom` that reads `ReactCurrentDispatcher` off the single React **19**
+   instance at module-evaluation time, an internal React 19 deleted, so importing DSG threw
+   before anything rendered — on *every* page, because `routes.tsx` imports the workbook
+   statically. Fixed with one `overrides` entry pinning `react-resize-detector` to `^12.3.0`,
+   which removes the nested `react-dom`, the nested detector and `lodash` from the tree
+   together. Full reasoning and the two regression paths are now **DEPENDENCIES.md §6.5**, a
+   do-not-touch entry rather than an open item.
+2. **The planned fallback was not needed.** DSG's `gutterColumn` is the one slot it makes
+   `position: sticky; left: 0`; widened to 260px and given the variable label over its code, it
+   *is* the frozen label column, and its header slot is the frozen corner. So all four §2.4
+   replacements land natively — no second synchronised grid, and the Phase 4 day-1 contingency
+   is closed rather than spent.
+
+**Three bugs the browser harness caught that no unit test would have.** Each was a real defect,
+not a test artefact, and each is worth recording because they are the class of thing that only
+appears under a real pointer:
+
+- `keepFocus: true` on the columns put every *clicked* cell straight into edit mode, so a single
+  click replaced the value and range selection — which UC031's copy/paste depends on — was
+  impossible. Removed.
+- Enter in the formula bar bubbled to DSG's document-level key handler, which then opened the
+  active cell for editing immediately after the bar had committed to it. The bar now stops
+  propagation of Enter and Escape.
+- DSG clears its active cell whenever focus leaves the grid, which is every time the user
+  reaches for the toolbar — so Copy, the series tools and bulk status all saw an empty
+  selection. The page now retains the last real selection and clears it only when the workbook
+  itself changes.
+
+**One deliberate deviation from the item list above.** Item 8 says the metadata drawer is a
+shadcn `Sheet`. A `Sheet` is a Radix portal with a scrim: it renders *over* the grid and takes
+focus, which rebuilds the very "leave the data to read about the data" motion the legacy
+metadata tab forces. §2.4 is the more specific requirement and it wins, so the drawer is a flex
+sibling of the grid instead. The harness asserts the consequence directly: opening it leaves
+36/36 cells mounted, `CAN · 2019 · HF.3.1` still selected, and zero modal dialogs on screen.
+
+*Also worth noting:* DSG ships light-only CSS variables, so in dark mode the grid's chrome
+stayed white while its cells flipped. Mapped onto the WHO tokens in `globals.css` — the one file
+allowed to hold colour — rather than by editing DSG's generated stylesheet, which any reinstall
+would overwrite.
+
+*Deferred, and stated rather than quietly dropped:* UC044's **admin dataset-level restore as of
+a date** is not built. Per-observation compare and restore is (right-click any cell → up to ten
+versions with the delta against current, restore writes a normal undoable edit authored by the
+restorer). The dataset-level variant needs a bulk as-of query the mock client does not expose,
+and it belongs with the Phase 7 admin screens rather than bolted onto the grid.
+
 ### Phase 5 — Quality Checks module (2.5 d)
 
 1. `ruleTypes.ts` + `runner.ts` covering all nine UC053 categories: YoY absolute/relative growth; growth between two data versions; new / disappeared / missing observations vs prior reporting; between-category inconsistency; between-table inconsistency; atypical entries (error **or** warning); group outliers by country attribute.

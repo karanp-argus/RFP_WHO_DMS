@@ -1,6 +1,6 @@
 # Handover — where this stands, and what to do next
 
-**Last updated:** 6 August 2026, end of Phase 3.
+**Last updated:** 6 August 2026, end of Phase 4.
 
 This file is deliberately **thin**. Everything durable already lives in three other
 documents, and duplicating them here would create a second source of truth that drifts out
@@ -25,7 +25,7 @@ verify it, and the open items.
 
 ## 2. State of play
 
-Phases 0–3 of 8 are complete and verified in a browser. Phases 4–8 are unstarted.
+Phases 0–4 of 8 are complete and verified in a browser. Phases 5–8 are unstarted.
 
 | Phase | Status | What exists |
 |---|---|---|
@@ -33,15 +33,16 @@ Phases 0–3 of 8 are complete and verified in a browser. Phases 4–8 are unsta
 | **1 — Domain + mock xMart** | ✅ Done | Pure `domain/` layer. 194 real WHO Member States, 143 currencies, SHA 2011 classifications (HF verbatim from FR §1), all 16 HLR8 formulas. Observations **derived on demand** from a seeded hash. `XMartClient` + mock implementation + API call log. |
 | **2 — Setup module** | ✅ Done | All 7 tabs live against the mock client. `DataTable` with drag-reorderable headers (UC015, persisted). Cross builder, formula editor with per-country overrides, metadata fields, reporting follow-up. Read-only variant for regular users. |
 | **3 — Formula engine** | ✅ Done | `src/domain/formula/` — tokeniser, recursive-descent parser, AST, dependency graph with topological order and cycle detection, evaluator, null-policy guards, series maths, 10 functions. All 16 seeded formulas evaluate live on the Formulas tab with an AST/dependency inspector. **129 passing tests.** |
-| **4 — Workbook** | ⬜ Next | The product. Depends on Phase 3, which is now in place — see §4. |
-| 5 — Quality Checks | ⬜ | Defects are already planted in the seed data waiting for it. |
+| **4 — Workbook** | ✅ Done | The product. `react-datasheet-grid` with a frozen year header, a frozen variable label+code column and a frozen corner; filter chips serialised to the URL; editing with live recompute through the Phase 3 engine; three-mode clipboard; undo/redo; a metadata drawer *beside* the grid; series tools; bulk status; locking; version compare; xlsx export; Save → xMart. **166 passing tests** + a 34-check browser harness. |
+| **5 — Quality Checks** | ⬜ Next | Defects are already planted in the seed data waiting for it — see §4. |
 | 6 — Reports | ⬜ | |
 | 7 — Users, dashboard, integration | ⬜ | Page stubs exist and are routed. |
 | 8 — Polish, demo script, packaging | ⬜ | |
 
 **Use-case coverage so far:** UC001–002, 006, 013–017, 021–023, 025–030, 045, 060 are
-demonstrable. Phase 3 deepens UC029/UC030/UC031 rather than adding new ones — the
-engine is what makes the Workbook's computed cells real. The full matrix is in PROTOTYPE_PLAN.md §8.
+demonstrable, plus **UC024, UC031, UC032, UC033, UC034, UC043, UC044 and UC046** from Phase 4.
+Phase 3 added no use cases of its own — the engine is what makes the Workbook's computed
+cells real. The full matrix is in PROTOTYPE_PLAN.md §8.
 
 ---
 
@@ -62,7 +63,7 @@ behaviour is demonstrated.
 
 ```bash
 npx tsc -b        # typecheck
-npm test          # 129 unit tests (domain, formula engine, mock client)
+npm test          # 166 unit tests (domain, formula engine, workbook, mock client)
 npm run build     # production build
 ```
 
@@ -75,6 +76,7 @@ then in another terminal:
 npm run verify:theme    # both themes + WCAG contrast over 18 token pairs + toggle persistence
 npm run verify:setup    # all 7 Setup tabs, UC015 reorder-survives-reload, admin vs regular
 npm run verify:formulas # Phase 3: all 16 formulas evaluated, AST + dependency graph, cycle refused
+npm run verify:workbook # Phase 4: the whole demo path — 34 checks, incl. the four §2.4 replacements
 npm run verify:zindex   # overlays are not clipped by the header (see CLAUDE.md stacking order)
 npm run verify:shell    # sidebar/header at 1440 / 768 / 390, permission-filtered nav
 ```
@@ -88,7 +90,7 @@ must not be "fixed" by inventing new brand colours.
 
 ---
 
-## 4. Phase 4 is next — start here
+## 4. Phase 5 is next — start here
 
 ### The prompt to give Claude Code
 
@@ -96,68 +98,58 @@ must not be "fixed" by inventing new brand colours.
 does not need to restate any of its rules. Copy this:
 
 ```text
-Continue the WHO Health Accounts DMS prototype with Phase 4 — the Workbook module.
+Continue the WHO Health Accounts DMS prototype with Phase 5 — the Quality Checks module.
 
-Read HANDOVER.md first (all of it, it is short), then the "Phase 4 — Workbook module"
-section of PROTOTYPE_PLAN.md, and §2.4 Decision 2 which that phase implements.
-Phases 0–3 are complete, verified and committed.
+Read HANDOVER.md first (all of it, it is short), then the "Phase 5 — Quality Checks module"
+section of PROTOTYPE_PLAN.md. Phases 0–4 are complete, verified and committed.
 
-Day one is the react-datasheet-grid spike: left-column pinning is the known unknown, and
-the fallback (a second synchronised grid for the label column) is already decided — do not
-re-litigate it. Resolve the nested react-dom@18 in the same sitting (DEPENDENCIES.md §7.1).
+Build all nine UC053 rule categories in src/domain/qc/ as pure, tested logic, then the
+module: the rule list with dev-authored rules visibly distinct from admin-created ones,
+the rule editor with country exclusions and a one-click reset, configurable thresholds,
+run scope by country or by attribute group, and the findings report with an outlier
+scatter and .xlsx/.csv download. Then wire UC052 into the workbook: run the applicable
+rules against the current selection, ring the offending cells and show the findings
+inline — the cell renderer already has the ringing states and reads them from
+`findingFor` in the grid context, which currently returns undefined for every cell.
 
-Then build the module as scoped: axis pickers with the UC031 constraint, the virtualised
-grid with frozen headers, cell renderers for all six states in both themes, filter chips
-serialised to URL search params, editing that recomputes dependents through the Phase 3
-engine, clipboard with three paste modes, undo/redo, the metadata drawer that opens beside
-the grid without unmounting it, series tools, bulk status, locking, export, version compare
-and Save → xMart.
+The seeded defects in data/generators/defects.ts were planted in Phase 1 for exactly
+this: real findings at named countries and years the demo can navigate to, covering all
+eight categories. A report that traces back to them is the acceptance criterion.
 
 Before reporting the phase done, run all three gates and tell me the results:
 npx tsc -b · npm test · npm run build.
-Then commit the phase as a single commit, and record the outcome in the Phase 4 section
-of PROTOTYPE_PLAN.md the way Phases 1–3 were.
+Then commit the phase as a single commit, and record the outcome in the Phase 5 section
+of PROTOTYPE_PLAN.md the way Phases 1–4 were.
 ```
 
-### What Phase 3 leaves you
+### What Phase 4 leaves you
 
-The formula engine is done and is the thing the Workbook is built on. The parts Phase 4
-will reach for:
-
-- **`useFormulaEngine(iso3, formulas?)`** (`src/hooks/`) — the only place the pure engine
-  meets data. It pulls one country's whole 2000–2024 reported series through
-  `XMartClient` and hands the engine a resolver closure. Do not add a second path.
-- **`engine.evaluate(code, iso3, year)`** returns the value *and* the trace: the expression
-  used, the AST, every input read with year and origin, the guard verdict and the
-  dependency chain. `FormulaInspectorDialog` already renders all of it and is reusable
-  from a grid cell.
-- **`engine.dependentsOf(code)`** — the transitive list to recompute after an edit, so the
-  grid refreshes only the cells the edit actually touched.
-- **`engine.validate(expr, { code })`** — syntax, unknown references and a cycle check.
-  This is what a cell's `=HF.1+HF.2` entry should go through before it is accepted.
-- **`fillSeries` / `interpolateAt` / `extrapolateAt`** (`domain/formula/series.ts`) already
-  implement `SeriesToolsDialog`'s maths, and tag every filled point `reported |
-  interpolated | extrapolated | blank` so a filled value is never indistinguishable from a
-  reported one.
-- **`formatValue(value, unit)`** (`src/lib/format.ts`) renders a missing value as an em
-  dash. Never `?? 0` in a cell renderer — Phase 3 goes to some trouble to keep blank and
-  zero apart and it would be lost at the last step.
-
-Two things about the engine that look like bugs and are not, both documented in place:
-a formula may reference its own code (`GGHE-D`) and that is an identity onto the macro
-series, not a cycle; and the three per-capita formulas carry an explicit `* 1000000`
-because expenditure is in NCU millions while `POP` is a count of people.
+- **`findingFor(observationKey)`** in `modules/workbooks/gridContext.ts` is the single seam
+  for UC052. The cell renderer already rings a cell red for an `error` and amber for a
+  `warning` and shows the message on hover; `WorkbookPage` currently passes a stub that
+  returns `undefined`. Wire the runner to it and the workbook integration is done.
+- **The "Run Quality Checks" toolbar button** exists and currently toasts that Phase 5 is
+  where it lands. Replace the toast, not the button.
+- **`useWorkbookData`** pulls a country's whole 2000–2024 series in one fetch and exposes
+  both the `Observation` records and a resolver for the formula engine. A QC run over a
+  workbook selection should read through it rather than fetching again.
+- **`domain/formula/series.ts`** already has `growthPercent`, interpolation and
+  linear/CAGR extrapolation — UC053's year-on-year growth rules should use them rather
+  than re-deriving the maths.
+- **`DataTable`** (Setup) is the list grid for the rule list and the findings table;
+  `CountryPicker` already does attribute-based group selection, which is exactly UC053's
+  *"Region=EURO or OECD=Y"* run scope.
 
 ## 5. Open items, each anchored to a phase
 
 | # | Item | When |
 |---|---|---|
-| 1 | **`react-datasheet-grid` carries a nested `react-dom@18`.** `react` itself is a single instance at 19, so no hooks hazard, but a second renderer exists. Currently inert — DSG is not imported yet. Resolve alongside the planned DSG spike. Options in DEPENDENCIES.md §7.1. | Phase 4, day 1 |
-| 2 | **Left-column pinning in DSG is the known unknown.** Spike it before building the toolbar and clipboard on top. Fallback (a second synchronised grid for the label column) is already decided — do not re-litigate. | Phase 4, day 1 |
-| 3 | **`date-fns`, `nanoid`, `@faker-js/faker` are installed but never imported.** Seeded data is hash-derived for reproducibility, so they may be genuinely unnecessary. Remove if still unused so the handover list reflects reality. | Phase 8 |
-| 4 | **Light-theme contrast: 3 known shortfalls** inherited from the WHO reference palette, deliberately left alone. Re-run `verify:theme` after Phases 4–7 add cell, chart and badge colours. | Phase 8 |
-| 5 | **The before/after demo slide** needs the legacy Express Report screenshot, embedded in the RFP at `Requirements/2. Functional Requirements PFD-2026-001.docx` → `word/media/image5.png` (a .docx is a zip). | Phase 8 |
-| 6 | **The seeded corpus does not reconcile the CHE financing split.** For Canada 2022 the Phase 3 tab shows `GGHE-D%CHE` 49.2% + `PVT-D%CHE` 66.1% + `EXT%CHE` 0.5% = 116%, because the generator draws `GGHE-D` as an independent share of CHE while `PVT-D` comes out of the FS partition. The engine and the arithmetic are correct; the two generator paths are not tied together. An HA economist would spot it. Fix in `generators/observations.ts` by deriving `GGHE-D` from `FS.1 + FS.3`, and re-run `phase1.test.ts` — it has an economic-plausibility suite attached. | Phase 8, or sooner if a data-heavy demo is scheduled |
+| 1 | **`date-fns`, `nanoid`, `@faker-js/faker` are installed but never imported.** Seeded data is hash-derived for reproducibility, so they may be genuinely unnecessary. Remove if still unused so the handover list reflects reality. | Phase 8 |
+| 2 | **Light-theme contrast: 3 known shortfalls** inherited from the WHO reference palette, deliberately left alone. Re-run `verify:theme` after Phases 4–7 add cell, chart and badge colours. | Phase 8 |
+| 3 | **The before/after demo slide** needs the legacy Express Report screenshot, embedded in the RFP at `Requirements/2. Functional Requirements PFD-2026-001.docx` → `word/media/image5.png` (a .docx is a zip). | Phase 8 |
+| 4 | **The seeded corpus does not reconcile the CHE financing split.** For Canada 2022 the Phase 3 tab shows `GGHE-D%CHE` 49.2% + `PVT-D%CHE` 66.1% + `EXT%CHE` 0.5% = 116%, because the generator draws `GGHE-D` as an independent share of CHE while `PVT-D` comes out of the FS partition. The engine and the arithmetic are correct; the two generator paths are not tied together. An HA economist would spot it. Fix in `generators/observations.ts` by deriving `GGHE-D` from `FS.1 + FS.3`, and re-run `phase1.test.ts` — it has an economic-plausibility suite attached. | Phase 8, or sooner if a data-heavy demo is scheduled |
+| 5 | **UC044's admin dataset-level restore as of a date is not built.** Per-observation compare and restore is. The dataset-level variant needs a bulk as-of query the mock client does not expose, and it belongs with the Phase 7 admin screens. | Phase 7 |
+| 6 | **The workbook bundle is 1.47 MB (456 kB gzipped)** and Vite now warns on chunk size. DSG, SheetJS, Recharts and the grid all land in one chunk. Route-level `React.lazy` on the five heavy modules is the obvious fix and is a Phase 8 packaging task, not a correctness one. | Phase 8 |
 | 7 | **UC020 was dropped from the bonus list.** Proving a component value is unused needs a full-corpus scan the front end cannot honestly perform. The LOV editor states the constraint instead. Revisit only if a backend exists. | — |
 
 ---

@@ -14,6 +14,7 @@
     "verify:theme": "node scripts/verify-theme.mjs",
     "verify:setup": "node scripts/verify-setup.mjs",
     "verify:formulas": "node scripts/verify-formulas.mjs",
+    "verify:workbook": "node scripts/verify-workbook.mjs",
     "verify:zindex": "node scripts/verify-zindex.mjs",
     "verify:shell": "node scripts/verify-shell.mjs"
   },
@@ -63,5 +64,8 @@
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "react-resize-detector": "^12.3.0"
   }
 }

@@ -371,3 +371,50 @@
     outline-offset: 2px;
   }
 }
+
+/* ===========================================================================
+   react-datasheet-grid — theming the workbook grid (Phase 4)
+
+   DSG ships its own CSS custom properties with light-only defaults, so in dark
+   mode the grid's chrome (borders, the canvas beyond the last column, the
+   selection ring) stayed white while every cell around it flipped. Mapping its
+   variables onto the WHO tokens fixes both themes at once, and — because the
+   right-hand sides are `var()`s that already flip in `.dark` — it needs no
+   `.dark` variant of its own.
+
+   This is also why the mapping lives here rather than in a component: CLAUDE.md
+   allows colour in exactly one file, and DSG's stylesheet is generated code we
+   must not edit (it would be overwritten on any reinstall).
+   =========================================================================== */
+
+.dms-workbook-grid {
+  --dsg-border-color: var(--who-border);
+  /* Cells paint their own background from the WHO cell tokens; this is the
+     canvas behind and beyond them. */
+  --dsg-cell-background-color: var(--who-surface);
+  --dsg-cell-disabled-background-color: var(--who-page-bg);
+  --dsg-header-text-color: var(--who-text-muted);
+  --dsg-header-active-text-color: var(--who-heading);
+  --dsg-selection-border-color: var(--who-primary-blue);
+  --dsg-selection-background-color: color-mix(in srgb, var(--who-primary-blue) 10%, transparent);
+  --dsg-selection-disabled-border-color: var(--who-text-muted);
+  --dsg-selection-disabled-background-color: transparent;
+  --dsg-scroll-shadow-color: color-mix(in srgb, var(--who-heading) 22%, transparent);
+  --dsg-selection-border-width: 2px;
+  --dsg-selection-border-radius: 2px;
+}
+
+/* The header row is chrome, not data — give it the raised surface so the
+   frozen row and the frozen corner read as one piece. */
+.dms-workbook-grid .dsg-row-header .dsg-cell {
+  background: var(--who-surface-raised);
+  font-weight: 600;
+}
+
+/* The canvas beyond the last column and below the last row. DSG leaves it
+   transparent and inherits whatever is behind, which in dark mode was the
+   browser's white default rather than the page. */
+.dms-workbook-grid,
+.dms-workbook-grid .dsg-container {
+  background: var(--who-page-bg);
+}

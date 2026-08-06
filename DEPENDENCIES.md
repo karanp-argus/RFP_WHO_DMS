@@ -82,7 +82,8 @@ these versions, the ranges are.
 |---|---|---|
 | **`@tanstack/react-table`** | **8.21.3** | **Pinned to v8 — DO NOT UPGRADE.** See §6.1. |
 | `@tanstack/react-virtual` | 3.14.9 | v3 is the stable line. Not yet imported — Phase 4 (workbook rows) and long Setup grids. |
-| `react-datasheet-grid` | 4.11.6 | The workbook grid. Chosen over Glide Data Grid because Glide's stable release peers on `react@16 \|\| 17 \|\| 18` only, with nothing past it but alphas, and it would add `lodash`, `marked` and `react-responsive-carousel` as peers. Not yet imported — Phase 4. Carries a nested-dependency caveat, §7.1. |
+| `react-datasheet-grid` | 4.11.6 | The workbook grid. Chosen over Glide Data Grid because Glide's stable release peers on `react@16 \|\| 17 \|\| 18` only, with nothing past it but alphas, and it would add `lodash`, `marked` and `react-responsive-carousel` as peers. **Requires the `react-resize-detector` override below to run under React 19** — see §6.5. |
+| `react-resize-detector` | **12.3.0, via `overrides`** | Not a direct dependency — a transitive of `react-datasheet-grid`, forced up from the `7.1.2` that DSG requests. **DO NOT REMOVE THE OVERRIDE.** §6.5 has the crash it prevents. |
 
 ### Drag and drop
 
@@ -202,35 +203,76 @@ lockstep.
 these packages version independently and `sortable@10` peers on `core@^6`. Bumping `core`
 to match `sortable` will fail to resolve.
 
+### 6.5 `react-resize-detector` — the override is load-bearing, do not remove it
+
+`package.json` carries:
+
+```json
+"overrides": { "react-resize-detector": "^12.3.0" }
+```
+
+**Delete it and every route in the application renders a blank page.** Not the workbook —
+*every* route, because `routes.tsx` imports the workbook page statically, so the module
+graph is evaluated on any navigation.
+
+The chain, established by the Phase 4 day-1 spike:
+
+1. `react-datasheet-grid@4.11.6` calls `useResizeDetector` unconditionally in
+   `DataSheetGrid`, its main component.
+2. The `react-resize-detector@7.1.2` that DSG requests peers on `react-dom@16–18`, so npm
+   nested a second `react-dom@18.3.1` under it.
+3. That React 18 `react-dom` reads
+   `React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.ReactCurrentDispatcher` off the
+   single React **19** instance at module-evaluation time. React 19 removed that internal,
+   so the read is `undefined` and the module throws before anything renders:
+
+   ```
+   TypeError: Cannot read properties of undefined (reading 'ReactCurrentDispatcher')
+       at node_modules/.vite/deps/react-datasheet-grid.js
+   ```
+
+`12.3.0` was chosen over the alternatives because it is the only one that removes the cause
+rather than working around it: it peers on `react@^18 || ^19`, has **no `react-dom`
+dependency at all**, and replaced `lodash` with `es-toolkit`. So the override deletes the
+nested `react-dom`, the nested `react-resize-detector` and `lodash` from the tree in one
+move — `node_modules/react-datasheet-grid/node_modules/` no longer exists, and there is
+exactly one `react-dom` in the graph. Dropping `lodash` also settles an inconsistency: the
+plan rejected Glide Data Grid partly for pulling `lodash` in, while DSG was quietly doing
+the same.
+
+DSG's call site is `useResizeDetector({ targetRef, refreshMode: 'throttle', refreshRate })`
+returning `{ width, height }`, which is unchanged across v7 → v12 — verified in the browser,
+not assumed: the grid renders, virtualises, resizes, and pins its header and gutter with no
+console errors.
+
+**Two ways this could regress.** A `npm i react-datasheet-grid` without the override
+restores the crash. And a future DSG release that adopts v12's own API changes could make
+`^12.3.0` wrong rather than merely unnecessary — at which point remove the override and
+re-run the spike, do not guess.
+
+*Rejected alternative:* forcing `react-dom` itself to 19 for the nested tree. It leaves
+`react-resize-detector@7`'s top-level `import { findDOMNode } from 'react-dom'` resolving to
+an API React 19 deleted, which is a latent break waiting for any code path that calls it,
+and it keeps `lodash`.
+
 ---
 
 ## 7. Open items to resolve at a named phase
 
-### 7.1 `react-datasheet-grid` carries a nested React 18 tree — check at Phase 4 start
+### 7.1 ~~`react-datasheet-grid` carries a nested React 18 tree~~ — RESOLVED at Phase 4 day 1
 
-DSG itself peers correctly on React 19. But its transitive dependency
-`react-resize-detector@7.1.2` peers on React 16–18, so npm installed a nested tree:
+The spike ran, and the item was worse than recorded: the nested `react-dom@18` was **not
+inert**, it crashed every route on import under React 19. Resolved by an `overrides` entry
+pinning `react-resize-detector` to `^12.3.0`, which removes the nested `react-dom`, the
+nested `react-resize-detector` and `lodash` from the tree together. Full reasoning, the
+exact error, and the two ways it can regress are in **§6.5** — it is a do-not-touch entry
+now, not an open item.
 
-```
-node_modules/react-datasheet-grid/node_modules/
-├── react-dom@18.3.1
-├── react-resize-detector@7.1.2
-└── scheduler
-```
-
-`react` itself is a **single instance at 19.2.8** — there is only one `react/package.json`
-in the tree, so there is no hooks-across-two-Reacts hazard. But a second `react-dom` exists,
-and two renderers in one page can cause subtle problems if the nested one ever renders.
-
-This is currently **inert** — DSG is not yet imported anywhere. Resolve it at the start of
-Phase 4, alongside the planned DSG spike, by one of:
-
-1. an npm `overrides` entry forcing `react-dom` to 19 and testing the grid still resizes;
-2. accepting the nested copy if the grid works, and noting the bundle cost; or
-3. switching grid if it turns out to be broken under React 19.
-
-Do not "fix" it speculatively before the grid is rendering — there is nothing to verify
-against yet.
+The second half of the day-1 spike — whether the variable label column can be pinned on the
+left — also came out well, and is recorded in PROTOTYPE_PLAN.md's Phase 4 outcome rather
+than here: DSG's `gutterColumn` is `position: sticky; left: 0`, accepts arbitrary content
+and an arbitrary width, and has a header slot over it that serves as the frozen corner. The
+planned fallback of a second synchronised grid was not needed.
 
 ### 7.2 `next-themes` was a transitive dependency doing real work
 
@@ -244,8 +286,9 @@ declared. When adding components, check what they pull in.
 
 ### 7.3 Installed but unused — decide before handover
 
-`@tanstack/react-virtual`, `react-datasheet-grid`, `recharts` and `react-resizable-panels`
-are all planned for Phases 4–7, so they stay.
+`react-datasheet-grid` is now imported by the workbook (Phase 4), and `@tanstack/react-virtual`
+arrives with it as DSG's own virtualisation engine. `recharts` and `react-resizable-panels`
+are still planned for Phases 5–7, so they stay.
 
 `date-fns`, `nanoid` and `@faker-js/faker` are **not imported anywhere** and may not be
 needed at all — seeded data is hash-derived for reproducibility, ids come from the same
