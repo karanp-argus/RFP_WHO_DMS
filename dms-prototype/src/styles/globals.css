@@ -95,6 +95,42 @@
   /* -- Elevation -- */
   --who-shadow-card: 4px 4px 11px #dedee2;
   --who-shadow-header: 0 2px 4px rgb(0 0 0 / 0.4);
+
+  /* -- shadcn semantics, as BARE custom properties --
+     The @theme inline block below publishes these same values under Tailwind's
+     `--color-*` namespace, which covers every generated component that reaches
+     them through a utility (`bg-popover`, `border-border`, …). It does not
+     cover the ones that read the raw variable from inline CSS, and those fail
+     silently — an undefined var() yields no declaration at all, not a warning:
+
+       · sonner sets `--normal-bg: var(--popover)`, so toasts rendered with no
+         background and sat transparent over the page.
+       · button's secondary variant hovers to
+         `color-mix(in oklch, var(--secondary), var(--foreground) 5%)`, which is
+         invalid with both undefined, so it had no hover feedback.
+
+     Declared once, in :root only. The right-hand sides are var()s that already
+     flip in `.dark`, and custom properties resolve per element at use time, so
+     a `.dark` copy would be duplication that could only drift.
+     Keep these in step with the @theme inline block. */
+  --background: var(--who-surface);
+  --foreground: var(--who-text);
+  --card: var(--who-surface);
+  --card-foreground: var(--who-text);
+  --popover: var(--who-surface-raised);
+  --popover-foreground: var(--who-text);
+  --primary: var(--who-brand);
+  --primary-foreground: var(--who-on-brand);
+  --secondary: var(--who-page-bg);
+  --secondary-foreground: var(--who-heading);
+  --muted: var(--who-page-bg);
+  --muted-foreground: var(--who-text-muted);
+  --accent: var(--who-accent-subtle);
+  --accent-foreground: var(--who-heading);
+  --destructive: var(--who-fail);
+  --border: var(--who-border);
+  --input: var(--who-border);
+  --ring: var(--who-primary-blue);
 }
 
 /* ---------------------------------------------------------------------------
