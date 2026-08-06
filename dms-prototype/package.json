@@ -10,7 +10,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "verify:theme": "node scripts/verify-theme.mjs",
+    "verify:setup": "node scripts/verify-setup.mjs",
+    "verify:zindex": "node scripts/verify-zindex.mjs",
+    "verify:shell": "node scripts/verify-shell.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -53,6 +57,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "jsdom": "^29.1.1",
     "oxlint": "^1.75.0",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",

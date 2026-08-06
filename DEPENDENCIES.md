@@ -133,6 +133,7 @@ these versions, the ranges are.
 | `oxlint` | 1.77.0 | Linter. Three `only-export-components` warnings remain in generated `components/ui/` files — do not fix those, they would return on the next `shadcn add`. Authored code is clean. |
 | `@types/node` | 24.13.3 | For `node:path` in `vite.config.ts`. |
 | `@types/react` / `@types/react-dom` | 19.2.18 / 19.2.4 | Track React 19. |
+| `playwright` | 1.62.1 | Drives the four `npm run verify:*` browser checks in `scripts/`. The bare `playwright` package, not `@playwright/test` — these are plain Node scripts asserting via console output, not a test-runner suite, because they are diagnostic harnesses rather than CI gates. Added at handover (6 Aug 2026); previously run from a temp scratchpad that had its own install, so the scripts could not have run on a colleague's machine. Requires a one-off `npx playwright install chromium`. |
 | `@faker-js/faker` | 10.5.0 | Not yet imported, and **may never be**. Phase 1 seeds are curated or hash-derived because faker output is not reproducible across runs. Candidate for removal. |
 
 ---
