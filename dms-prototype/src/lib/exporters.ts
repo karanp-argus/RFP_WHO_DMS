@@ -62,30 +62,106 @@ export interface SheetSpec {
 }
 
 /**
+ * A sheet given as a rectangle rather than as objects.
+ *
+ * Needed by the Phase 6 pivot export, where the header is several rows deep and
+ * the same column label repeats — neither of which a `headers: string[]` plus
+ * keyed rows can express. Kept alongside `SheetSpec` rather than replacing it:
+ * the object form is what the flat exports read naturally as.
+ */
+export interface GridSheetSpec {
+  name: string
+  /** Rows of cells, header rows included. Written verbatim. */
+  aoa: readonly (readonly (string | number | null)[])[]
+  /** Column widths in characters; derived from the first row when omitted. */
+  widths?: readonly number[]
+  /**
+   * Excel number format applied to every numeric cell, e.g. `#,##0.0`.
+   *
+   * A *display* format, not a rounding: the cell keeps the full value the
+   * engine produced, so a reader who widens the column or builds their own
+   * formula on top of it gets the real number. Writing pre-rounded values
+   * instead would quietly make the file less accurate than the screen it came
+   * from.
+   */
+  numberFormat?: string
+}
+
+function buildWorkbook(sheets: readonly (SheetSpec | GridSheetSpec)[]): XLSX.WorkBook {
+  const wb = XLSX.utils.book_new()
+
+  for (const sheet of sheets) {
+    let aoa: unknown[][]
+    let widths: readonly number[] | undefined
+    if ('aoa' in sheet) {
+      aoa = sheet.aoa.map((r) => [...r])
+      widths = sheet.widths
+    } else {
+      aoa = [[...sheet.headers], ...sheet.rows.map((r) => sheet.headers.map((h) => r[h] ?? ''))]
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa)
+
+    if ('aoa' in sheet && sheet.numberFormat) {
+      const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1')
+      for (let r = range.s.r; r <= range.e.r; r++) {
+        for (let c = range.s.c; c <= range.e.c; c++) {
+          const cell = ws[XLSX.utils.encode_cell({ r, c })] as XLSX.CellObject | undefined
+          if (cell?.t === 'n') cell.z = sheet.numberFormat
+        }
+      }
+    }
+
+    // Give every column a workable width — an export nobody has to resize
+    // reads as finished.
+    const firstRow = aoa[0] ?? []
+    ws['!cols'] = (widths ?? firstRow.map((h) => String(h ?? '').length + 4)).map((w) => ({
+      wch: Math.min(48, Math.max(12, Number(w) || 12)),
+    }))
+
+    // Frozen panes are deliberately not written: they are a SheetJS Pro
+    // feature and the community build silently drops `!freeze`, so setting it
+    // would look like a working feature in the code and produce nothing in the
+    // file. The pivot export puts its row labels in the leftmost columns
+    // instead, which is what makes a wide sheet readable without them.
+
+    // Excel caps sheet names at 31 characters.
+    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31))
+  }
+
+  return wb
+}
+
+/**
  * One or more sheets → .xlsx download.
  *
  * UC021's import step needs the header row to match the export exactly, so
  * headers are written explicitly rather than inferred from the first object.
  */
-export function downloadXlsx(sheets: readonly SheetSpec[], filenameStem: string): void {
-  const wb = XLSX.utils.book_new()
+export function downloadXlsx(
+  sheets: readonly (SheetSpec | GridSheetSpec)[],
+  filenameStem: string,
+): void {
+  XLSX.writeFile(buildWorkbook(sheets), stamped(filenameStem, 'xlsx'))
+}
 
-  for (const sheet of sheets) {
-    const aoa: unknown[][] = [
-      [...sheet.headers],
-      ...sheet.rows.map((r) => sheet.headers.map((h) => r[h] ?? '')),
-    ]
-    const ws = XLSX.utils.aoa_to_sheet(aoa)
-    // Give every column a workable width — an export nobody has to resize
-    // reads as finished.
-    ws['!cols'] = sheet.headers.map((h) => ({
-      wch: Math.min(42, Math.max(12, String(h).length + 4)),
-    }))
-    // Excel caps sheet names at 31 characters.
-    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31))
-  }
+/**
+ * The same workbook as a `Blob`, without downloading it.
+ *
+ * UC042's background jobs build files *before* anybody asks for them — the
+ * notification arrives later and carries the download link — so the bytes have
+ * to exist in memory first. `writeFile` cannot do that; it triggers a save.
+ */
+export function xlsxBlob(sheets: readonly (SheetSpec | GridSheetSpec)[]): Blob {
+  const out = XLSX.write(buildWorkbook(sheets), { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+  return new Blob([out], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+}
 
-  XLSX.writeFile(wb, stamped(filenameStem, 'xlsx'))
+/** Save a blob already in hand — the download link on a completed job. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  triggerDownload(blob, filename)
 }
 
 /* --------------------------------------------------------------------------

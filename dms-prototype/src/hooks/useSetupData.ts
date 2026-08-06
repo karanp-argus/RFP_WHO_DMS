@@ -77,6 +77,25 @@ export function useReportingContacts() {
   })
 }
 
+/**
+ * UC039 — the import batches behind the data tracking report.
+ *
+ * Keyed on the sorted country list, so two selections with the same countries
+ * in a different order share one cache entry rather than refetching. Disabled
+ * until something is selected: the report is *"select one or multiple
+ * countries and view the data submission status of those countries"*, and
+ * pulling all 194 on arrival would answer a question nobody asked.
+ */
+export function useImportBatches(countries: readonly string[]) {
+  const key = [...countries].sort().join(',')
+  return useQuery({
+    queryKey: ['xmart', 'import-batches', key],
+    enabled: countries.length > 0,
+    staleTime: CONFIG_STALE_MS,
+    queryFn: () => mockXMartClient.getImportBatches([...countries]),
+  })
+}
+
 export function useUsers() {
   return useQuery({
     queryKey: ['xmart', 'users'],

@@ -725,6 +725,90 @@ time. Route-level `React.lazy` remains the Phase 8 packaging task it already was
 
 **Done when:** an admin builds a pivot report, saves it, a regular user runs it for 5 countries, and 5 `.xlsx` files arrive via a notification with a working download link. → **UC035, 036, 039, 042** (+ 037, 038, 040, partial 041).
 
+**Outcome (built, verified, committed).** `src/domain/report/` is pure and tested: the
+field catalogue, the definition and its validation, unit/currency/scale presentation, and
+`pivot.ts` — rows, columns, values, filters and subtotals over observations. Above it,
+`data/report/reportAccess.ts`, six delivered reports, `reportStore`, `notificationStore`,
+the drag-based builder, the run page, the data tracking report, the UC042 job queue and a
+header bell. **299 passing tests** (41 new domain tests, 17 new corpus tests) and a
+**51-check browser harness** (`npm run verify:reports`). The acceptance beat is asserted
+end to end: the harness drives the build, the save, the role switch, the five-country run,
+and then reads the five downloaded files off disk and checks they are non-empty OOXML
+workbooks — a link that fires a download event and produces nothing would pass any
+name-only check.
+
+**Conversion happens per observation, before aggregation — and a total across two
+currencies is refused rather than computed.** This is the design decision the module turns
+on. A report grouped by WHO region that sums national-currency millions across its members
+is adding pesos to yen, and dividing afterwards does not rescue it. So every value is
+converted at the coordinate it was read at, using that country's own exchange rate for
+that year, and the unit label it carries is **the country's currency** (`CAD millions`),
+not an anonymous `NCU millions`. A cell whose contributions arrived in more than one unit
+produces no number at all — it renders as a marked refusal with the reason on hover, and
+switching the report to US dollars makes the same total appear. Labelling everything `NCU`
+would have let the wrong sum through looking entirely reasonable, which is why the
+currency is in the unit string.
+
+**A report expands one level deeper than a QC rule, and the corpus test is what said so.**
+`reportedCodesFor` (Phase 5) expands aggregates to their children, which is enough for a
+rule that names classification codes. A report names *indicators* — `CHE%GDP_SHA2011` is
+the point of the module — and an indicator's inputs are reachable only through its
+expression. Expanding only aggregates fetched nothing for it, and the first run of
+`phase6.test.ts` returned `null` from the engine for every indicator. `reportFetchCodes`
+now walks formula ASTs as well, so `CHE%GDP` pulls the `HF` leaves, `GDP`, `POP` and `EXR`.
+The domain fixture could never have caught this: it hands the pivot its own data.
+
+**UC037 is read literally, and it differs from UC050 on purpose.** *"Only the user that
+created a custom report can view or run it"* grants no exception for administrators, where
+UC050 explicitly makes a regular user's private QC rules visible to them so one can be
+promoted to the shared set. Inventing the same exception here would give administrators
+sight of colleagues' working drafts the RFP never asked for. An administrator who wants a
+report in everyone's list creates it as predefined. The harness asserts the negative.
+
+**Values are measures, not fields.** An observation carries exactly one number, so
+dragging `Country` into the Values bucket would be meaningless. The palette offers the five
+aggregations of that one measure as draggable items of their own and the Values bucket
+accepts only those. The alternative — accepting any field and silently counting it — gives
+the user four ways to build the same column and no way to build an average. Likewise
+UC036's *"groupings"* is a subtotal toggle **on a placed field** rather than a fifth
+bucket, which is what it is in Excel; it is inert on the innermost field, where a subtotal
+would repeat the line above it.
+
+**Notifications were pulled forward from Phase 7.** UC042 requires *"an In App
+notification ... with a link to download the file"*, so there has to be somewhere for it to
+arrive. `notificationStore`, the header bell and a real `NotificationsPage` are built here.
+**UC058/UC059 are not** — subscribing to events and configuring what raises a notification
+is still Phase 7, and the page says so rather than implying the module is finished.
+
+*A Phase 1 wrinkle observed rather than silently patched:* `classifications.ts` sets
+`isCurrency` per **dimension**, and MACRO is the one dimension where that cannot be right —
+it holds GDP and general government expenditure alongside population, an exchange rate and
+a PPP factor. Rather than reopen the seed and the economic-plausibility suite attached to
+it, `domain/report/units.ts` names the three monetary members explicitly
+(`MONETARY_MACRO_CODES`). The consequence is confined to presentation: a report scaled to
+billions scales GDP with it instead of leaving one column in millions.
+
+*What is real and what is not, stated because the demo will be asked:* the pivot, the Excel
+files and the progress bar are real — a job pivots and writes one country at a time,
+yielding to the event loop between them, and the bar tracks files finished rather than a
+timer. What a front-end prototype cannot do is survive the tab closing, so the queue is
+session state and the generated blobs live in memory, the same trade `qcStore` makes for
+findings. Notifications themselves persist; a download link whose files have been dropped
+says so and offers to run the report again rather than doing nothing.
+
+*Also worth noting:* exported numbers keep full precision and carry an Excel **display**
+format (`#,##0.0`) rather than being pre-rounded, so a reader who builds a formula on top
+of the file gets the number the engine produced. And the `About` sheet is not padding — a
+spreadsheet that arrives without the scope, unit and scale it was produced under is a grid
+of numbers nobody can reproduce.
+
+*Deferred, and stated rather than quietly dropped:* **UC041 is partial and labelled as
+such.** English, French and Spanish are selectable; Arabic, Chinese and Russian are listed,
+disabled, and each carries the reason — Arabic needs right-to-left layout, which belongs in
+the proposal rather than in a fake dropdown entry. The bundle is now **2.01 MB (610 kB
+gzipped)**, up from 1.92 MB; route-level `React.lazy` remains the Phase 8 packaging task it
+already was.
+
 ### Phase 7 — Users, Home dashboard, Integration (2 d)
 
 1. **Users (UC004/005/007/012):** the reference table pattern almost verbatim — avatar + name + email identity cell, active switch, role select, `⋮` actions, pagination. Grant access by email (internal vs Entra ID guest); guests are `Regular User` with the role control disabled (per UC007); **no delete action anywhere** — only disable (UC012). Disable/enable with the last-admin guard (**UC010/011**, bonus).
@@ -732,7 +816,7 @@ time. Route-level `React.lazy` remains the Phase 8 packaging task it already was
 3. **`HomePage` (UC002/UC003):** module tiles (permission-filtered) plus a dashboard — countries reported this cycle, observations pending publication, open QC findings by severity, recent activity, upcoming reporting due dates, a data-completeness heatmap. Different tile sets for admin vs regular user (**UC003.1**, bonus).
 4. **`XMartStatusPage` (UC045/046/056):** the To-Be architecture diagram rendered live, last-sync timestamps per source (eDamis, OneDrive, HAPT, WB/IMF/UN), a manual "Pull from xMart" that shows real progress, and the API call log.
 5. **`RetrievalApiPage` (Annex 3):** the request builder from §1.7 — country, year range, `modifiedSince`, `includeDeleted`, `page`, `pageSize` (default 100,000) — showing the generated URL, an OAuth 2.0 bearer-token placeholder, response headers with paging metadata, and a downloadable CSV carrying `Sys_ID` and `Sys_CommitDateUtc`. **Walk the evaluator down the Annex 3 mandatory list on this one screen.**
-6. **Notifications panel:** header bell with an unread count, panel listing job completions and reporting due dates, `NotificationsPage` list view.
+6. **Notifications panel:** ~~header bell with an unread count, panel listing job completions, `NotificationsPage` list view~~ — **built in Phase 6**, because UC042's job-completion notification needs somewhere to arrive. What remains here is the module proper: reporting due dates as a second sender, and **UC058/UC059** — subscribing to events and configuring what raises a notification.
 
 **Done when:** the permission matrix visibly changes what a regular user can do, and the Retrieval API page answers every mandatory Annex 3 row on screen. → **UC004, 005, 007, 012, 045, 046, 056** (+ 003.1, 008, 010, 011, partial 058).
 
@@ -787,6 +871,6 @@ time. Route-level `React.lazy` remains the Phase 8 packaging task it already was
 |---|---|
 | Pilot use cases (Y) in the RFP | 41 |
 | Pilot use cases covered by this prototype | **41** |
-| Non-Pilot (N) use cases covered as bonus | 6 — UC008, 010, 011, 032, 033, 040 (+ partial 003.1, 018, 020, 021, 034, 037, 038, 041, 049, 051, 058) |
+| Non-Pilot (N) use cases covered as bonus | 8 — UC008, 010, 011, 032, 033, 037, 038, 040 (+ partial 003.1, 018, 020, 021, 034, 041, 049, 051, 058) |
 | Annex 3 mandatory API requirements demonstrated | 10 of 10, on one screen |
 | Estimated effort | ≈19 developer-days |

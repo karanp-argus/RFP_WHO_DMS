@@ -10,12 +10,13 @@
  * UC007/UC008 permission demo.
  */
 
-import { Bell, ChevronDown, HelpCircle, Menu, RotateCcw, Search, Terminal } from 'lucide-react'
+import { ChevronDown, HelpCircle, Menu, RotateCcw, Search, Terminal } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { cn } from '@/lib/utils'
 import { resetDemoData } from '@/data/db'
 import { ThemeToggle } from './ThemeToggle'
+import { NotificationBell } from './NotificationBell'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -105,13 +106,8 @@ export function Header() {
           <HelpCircle className="size-[18px]" />
         </button>
 
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative p-2 text-who-icon transition-colors hover:text-who-primary-blue"
-        >
-          <Bell className="size-[18px]" />
-        </button>
+        {/* Wired in Phase 6: UC042's background jobs deliver here. */}
+        <NotificationBell />
 
         {/* Name / role block. The reference draws a 1px × 30px divider to its
             left via ::before; here it is an explicit element. */}

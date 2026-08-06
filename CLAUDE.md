@@ -232,6 +232,28 @@ them with the reasoning. Do not "fix" them by inventing new brand colours.
 - **Regular users keep view + export on every tab.** UC007 requires it, so the read-only
   variant hides create/edit affordances but never the export buttons.
 
+## Reports module patterns (Phase 6)
+
+- **Conversion happens per observation, before aggregation, and the unit label carries the
+  country's currency** (`CAD millions`, never a generic `NCU millions`). A total whose
+  contributions arrived in more than one unit produces **no number** — summing pesos and yen
+  is the failure this guard exists for, and an anonymous unit string would let it through
+  looking correct. Only `UNITS.NCU_MILLIONS` series convert or rescale; percentages and
+  per-capita dollars pass through untouched.
+- **`reportFetchCodes` expands formula ASTs as well as aggregates.** `reportedCodesFor`
+  (Phase 5) only expands parents to children, which is enough for a QC rule but fetches
+  nothing for an indicator — `CHE%GDP` reaches its inputs only through its expression. If a
+  new screen needs the reported leaves behind an indicator, use the report expander.
+- **UC037 is literal: a custom report is invisible to administrators too.** This differs
+  from UC050, where a regular user's private QC rules *are* visible to admins so one can be
+  promoted. Do not "fix" the asymmetry — both are what their use case says.
+- **Values are measures, not fields.** An observation carries one number, so the builder's
+  Values bucket accepts the five aggregations of it and nothing else. UC036's "groupings"
+  is a subtotal toggle on a placed field, inert on the innermost one.
+- **`notificationStore` is the delivery mechanism for every in-app notification.** Phase 6
+  built it for UC042; Phase 7's notification module adds senders and configuration around
+  it, not a second store.
+
 ## Dependency notes
 
 **[DEPENDENCIES.md](DEPENDENCIES.md) is the full register** — every package, its installed

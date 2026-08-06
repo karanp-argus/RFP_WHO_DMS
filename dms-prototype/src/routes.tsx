@@ -28,6 +28,8 @@ import { SetupPage } from '@/modules/setup/SetupPage'
 import { WorkbookSelectPage } from '@/modules/workbooks/WorkbookSelectPage'
 import { WorkbookPage } from '@/modules/workbooks/WorkbookPage'
 import { ReportsListPage } from '@/modules/reports/ReportsListPage'
+import { ReportBuilderPage } from '@/modules/reports/ReportBuilderPage'
+import { ReportRunPage } from '@/modules/reports/ReportRunPage'
 import { QcListPage } from '@/modules/quality/QcListPage'
 import { QcRuleEditorPage } from '@/modules/quality/QcRuleEditorPage'
 import { QcReportPage } from '@/modules/quality/QcReportPage'
@@ -108,6 +110,22 @@ export const ROUTES: RouteDef[] = [
     module: 'reports',
     Component: ReportsListPage,
     nav: true,
+  },
+  {
+    // `:reportId` is the report being laid out. One route for creating and
+    // editing, so the builder cannot drift between the two.
+    path: '/reports/builder/:reportId',
+    label: 'Report builder',
+    module: 'reports',
+    Component: ReportBuilderPage,
+    nav: false,
+  },
+  {
+    path: '/reports/run/:reportId',
+    label: 'Run report',
+    module: 'reports',
+    Component: ReportRunPage,
+    nav: false,
   },
   {
     path: '/setup',
