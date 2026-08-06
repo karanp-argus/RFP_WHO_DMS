@@ -77,7 +77,7 @@ export function ImportDialog({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Import {label.toLowerCase()}</DialogTitle>
           <DialogDescription>

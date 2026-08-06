@@ -102,7 +102,16 @@ export function HomePage() {
             <Link key={r.path} to={r.path} className="group">
               <Card className="h-full shadow-who-card transition-colors group-hover:border-who-primary-blue">
                 <CardContent className="flex h-full items-start gap-4 p-6">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded bg-who-page-bg text-who-sidebar">
+                  {/* --who-accent-subtle, not --who-page-bg: page-bg is the
+                      canvas, which sits BELOW --who-surface in dark, so a chip
+                      painted with it reads as a hole punched in the card rather
+                      than a badge on it. accent-subtle is a tint of the surface
+                      and stays above it in both themes.
+                      --who-primary-blue, not --who-sidebar: the sidebar token is
+                      a surface (#203350 in dark), so using it as an icon colour
+                      measured 1.44:1 there. See the content-vs-surface table in
+                      CLAUDE.md. */}
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded bg-who-accent-subtle text-who-primary-blue">
                     {Icon ? <Icon className="size-5" aria-hidden /> : null}
                   </span>
                   <span className="min-w-0 flex-1">

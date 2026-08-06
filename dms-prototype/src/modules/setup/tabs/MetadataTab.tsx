@@ -188,7 +188,9 @@ export function MetadataTab() {
           Metadata files (MET)
         </h4>
         <div className="mt-2 flex flex-wrap items-center gap-3 rounded border border-who-border bg-who-page-bg px-4 py-3">
-          <FileSpreadsheet className="size-5 shrink-0 text-who-sidebar" aria-hidden />
+          {/* --who-sidebar is a surface token; as an icon colour it measured
+              1.44:1 in dark. See CLAUDE.md's content-vs-surface table. */}
+          <FileSpreadsheet className="size-5 shrink-0 text-who-primary-blue" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="text-[length:var(--text-body-sm)] text-who-text">
               xMart writes MET files (.xlsx) to a SharePoint folder. Open them there to work in

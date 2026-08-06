@@ -40,6 +40,9 @@ export function Header() {
   const switchRole = useAuthStore((s) => s.switchRole)
   const signOut = useAuthStore((s) => s.signOut)
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
+  // Only for the left offset — the collapse control itself lives on the
+  // sidebar's edge, in Sidebar.tsx.
+  const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggleDevDrawer = useUiStore((s) => s.toggleDevDrawer)
 
   return (
@@ -50,6 +53,10 @@ export function Header() {
         'fixed top-0 right-0 z-20 flex h-header items-center bg-who-surface',
         'left-0 md:left-sidebar',
         'px-4 md:pr-6 md:pl-[30px]',
+        // Same 300ms curve as the sidebar's width, so the header edge tracks
+        // the rail rather than snapping ahead of it.
+        'transition-[left] duration-300',
+        collapsed && 'md:left-sidebar-rail',
         'shadow-who-header',
       )}
     >

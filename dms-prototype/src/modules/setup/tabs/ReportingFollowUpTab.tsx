@@ -231,7 +231,6 @@ export function ReportingFollowUpTab() {
         columns={columns}
         searchPlaceholder="Search countries and notes"
         getRowId={(r) => r.id}
-        pageSize={20}
         onExport={(rows) =>
           downloadCsv(
             rows.map((r) => ({

@@ -171,6 +171,7 @@
   --color-who-brand: var(--who-brand);
   --color-who-brand-hover: var(--who-brand-hover);
   --color-who-primary-blue: var(--who-primary-blue);
+  --color-who-accent-subtle: var(--who-accent-subtle);
 
   --color-who-sidebar: var(--who-sidebar);
   --color-who-sidebar-hover: var(--who-sidebar-hover);
@@ -207,6 +208,12 @@
   --spacing-header: 70px;
   --spacing-content-left: 300px;
   --spacing-content-top: 110px;
+
+  /* Collapsed ("rail") sidebar. 70px = --spacing-header, so the rail is exactly
+     square with the header and the two form a clean corner. The -left pair is
+     each width + the reference's 40px content gutter (260+40 / 70+40). */
+  --spacing-sidebar-rail: 70px;
+  --spacing-content-left-rail: 110px;
 }
 
 /* The reference collapses the sidebar at 767px. Tailwind's `md` is 768px,

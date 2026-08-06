@@ -58,9 +58,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { EmptyState } from './EmptyState'
+
+/** Rows-per-page choices. 10 is the default — see `pageSize`. */
+const PAGE_SIZES = [10, 25, 50, 100] as const
 
 export interface DataTableProps<T> {
   data: readonly T[]
@@ -77,6 +87,7 @@ export interface DataTableProps<T> {
   /** Called with the currently filtered+sorted rows. */
   onExport?: (rows: readonly T[]) => void
   exportLabel?: string
+  /** Initial rows per page. The user can change it; this is only the start. */
   pageSize?: number
   emptyMessage?: string
   /** Row click handler — used for drill-in to a component value. */
@@ -111,6 +122,12 @@ function SortableHeader({
       className={cn(
         'relative bg-who-surface px-3 py-2 text-left align-middle',
         'text-[length:var(--text-meta)] font-semibold tracking-wide text-who-heading uppercase',
+        // Headers never wrap. `table-auto` sizes a column to its *cell* content
+        // and lets the header wrap into the leftovers, which put "World Bank
+        // income group" on 4 lines in an 85px column. nowrap makes the header's
+        // single-line width the column's minimum instead, so the column widens
+        // and the table scrolls horizontally — which the wrapper already does.
+        'whitespace-nowrap',
         isDragging && 'z-10 opacity-80 shadow-who-card',
         className,
       )}
@@ -144,7 +161,7 @@ export function DataTable<T>({
   toolbar,
   onExport,
   exportLabel = 'Export CSV',
-  pageSize = 25,
+  pageSize = 10,
   emptyMessage = 'No records match the current filters.',
   onRowClick,
   getRowId,
@@ -195,6 +212,15 @@ export function DataTable<T>({
   const filteredRows = table.getFilteredRowModel().rows.map((r) => r.original)
   const pageCount = table.getPageCount()
   const pageIndex = table.getState().pagination.pageIndex
+  const currentPageSize = table.getState().pagination.pageSize
+  // Offering "100 per page" on a 12-row table is noise. Keep every size that
+  // would still hide rows, plus the first that shows them all — so there is
+  // always a "see everything" step — plus whatever is currently in force.
+  const total = filteredRows.length
+  const showsAll = PAGE_SIZES.find((n) => n >= total)
+  const sizeOptions = PAGE_SIZES.filter(
+    (n) => n < total || n === showsAll || n === currentPageSize,
+  )
 
   return (
     <div className="space-y-3">
@@ -268,8 +294,11 @@ export function DataTable<T>({
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="overflow-x-auto rounded border border-who-border">
+      {/* Grid. The container carries the surface: without it the rows sat
+          straight on the page canvas, so the header (bg-who-surface) floated
+          white above a grey body, and a --who-page-bg zebra stripe was the
+          exact colour of the thing behind it — i.e. invisible. */}
+      <div className="overflow-x-auto rounded border border-who-border bg-who-surface">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -322,7 +351,14 @@ export function DataTable<T>({
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                   className={cn(
                     'border-b border-who-border/60 last:border-b-0',
-                    onRowClick && 'cursor-pointer hover:bg-who-page-bg',
+                    // Zebra + hover use different token families on purpose.
+                    // The stripe is neutral (--who-page-bg, the canvas) so it
+                    // reads as banding; the hover is the brand tint
+                    // (--who-accent-subtle) so it reads as "this row". Sharing
+                    // one token would make a hovered row indistinguishable from
+                    // its striped neighbours.
+                    'even:bg-who-page-bg hover:bg-who-accent-subtle',
+                    onRowClick && 'cursor-pointer',
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -339,45 +375,73 @@ export function DataTable<T>({
         {rows.length === 0 ? <EmptyState message={emptyMessage} /> : null}
       </div>
 
-      {/* Pagination — reference styles it bottom-right with a soft shadow. */}
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[length:var(--text-meta)] text-who-text-muted">
-            {filteredRows.length.toLocaleString()} record
-            {filteredRows.length === 1 ? '' : 's'}
-            {filteredRows.length !== data.length ? ` of ${data.length.toLocaleString()}` : ''}
-          </p>
-          <div className="flex items-center gap-1 rounded shadow-who-card">
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label="Previous page"
-              disabled={!table.getCanPreviousPage()}
-              onClick={() => table.previousPage()}
-              className="rounded-r-none"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <span className="border-y border-who-border bg-who-surface px-3 py-1.5 text-[length:var(--text-body-sm)] text-who-text">
-              {pageIndex + 1} / {pageCount}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label="Next page"
-              disabled={!table.getCanNextPage()}
-              onClick={() => table.nextPage()}
-              className="rounded-l-none"
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
-      ) : (
+      {/* Footer — reference styles the pager bottom-right with a soft shadow.
+          The row-count and the page-size control render whether or not there is
+          more than one page: the pager is what becomes meaningless at one page,
+          not the ability to ask for more rows. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[length:var(--text-meta)] text-who-text-muted">
           {filteredRows.length.toLocaleString()} record{filteredRows.length === 1 ? '' : 's'}
+          {filteredRows.length !== data.length ? ` of ${data.length.toLocaleString()}` : ''}
         </p>
-      )}
+
+        <div className="flex items-center gap-3">
+          {sizeOptions.length > 1 ? (
+            <label className="flex items-center gap-2 text-[length:var(--text-meta)] text-who-text-muted">
+              Rows per page
+              <Select
+                value={String(currentPageSize)}
+                onValueChange={(v) => {
+                  table.setPageSize(Number(v))
+                  // Jump to the top. TanStack keeps the first visible row in
+                  // view instead, which lands you mid-list on a page number
+                  // that no longer means anything to the reader.
+                  table.setPageIndex(0)
+                }}
+              >
+                <SelectTrigger size="sm" className="w-[72px]" aria-label="Rows per page">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sizeOptions.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          ) : null}
+
+          {pageCount > 1 ? (
+            <div className="flex items-center gap-1 rounded shadow-who-card">
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="Previous page"
+                disabled={!table.getCanPreviousPage()}
+                onClick={() => table.previousPage()}
+                className="rounded-r-none"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="border-y border-who-border bg-who-surface px-3 py-1.5 text-[length:var(--text-body-sm)] whitespace-nowrap text-who-text">
+                {pageIndex + 1} / {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="Next page"
+                disabled={!table.getCanNextPage()}
+                onClick={() => table.nextPage()}
+                className="rounded-l-none"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }
