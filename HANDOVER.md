@@ -88,6 +88,45 @@ must not be "fixed" by inventing new brand colours.
 
 ## 4. Phase 3 is next — start here
 
+### The prompt to give Claude Code
+
+`CLAUDE.md` is loaded automatically at the start of every session in this repo, so the prompt
+does not need to restate any of its rules. Copy this:
+
+```text
+Continue the WHO Health Accounts DMS prototype with Phase 3 — the formula engine.
+
+Read HANDOVER.md first (all of it, it is short), then the "Phase 3 — Formula engine"
+section of PROTOTYPE_PLAN.md. Phases 0–2 are complete, verified and committed.
+
+Build Phase 3 as scoped in the plan: src/domain/formula/ — tokenizer, recursive-descent
+parser, AST, dependency graph with topological ordering and cycle detection, evaluator,
+null-policy guards, and the 10 functions (SUM AVG MIN MAX ABS IF PREV GROWTH
+INTERPOLATE EXTRAPOLATE). Then wire it into the Setup → Formulas tab, which already
+renders expressions and ANY/ALL policy badges and is waiting for real evaluation.
+
+Acceptance: all 16 seeded formulas evaluate correctly for a real country-year; nested
+formulas (CHE%GDP → CHE → HF.*) resolve in dependency order; a failed null-guard yields
+blank rather than 0; a deliberate cycle is reported rather than hanging. Add unit tests
+alongside the existing 46.
+
+Before reporting the phase done, run all three gates and tell me the results:
+npx tsc -b · npm test · npm run build.
+Then commit the phase as a single commit, and record the outcome in the Phase 3 section
+of PROTOTYPE_PLAN.md the way Phases 1 and 2 were.
+```
+
+If they would rather confirm the inherited state before building anything, have them start
+with this instead, then use the prompt above:
+
+```text
+Read HANDOVER.md and verify the state it describes: run npx tsc -b, npm test,
+npm run build, and then npm run dev in the background plus npm run verify:setup.
+Report anything that does not match what HANDOVER.md claims. Do not start Phase 3 yet.
+```
+
+### Scope and traps
+
 Read PROTOTYPE_PLAN.md §Phase 3 in full. The scope is a tokeniser → recursive-descent
 parser → dependency graph → evaluator in `src/domain/formula/`, about 250 lines, with ~30
 unit tests.
