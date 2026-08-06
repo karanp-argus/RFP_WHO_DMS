@@ -37,7 +37,16 @@ export interface Defect {
   dimension: DimensionCode
   /** Variable code the defect applies to. */
   code: string
-  /** Single year, or an inclusive range for `gap`. */
+  /**
+   * The years the defect *acts on*, inclusive.
+   *
+   * For `gap`, `disappeared` and `new` this is the span in which the value is
+   * suppressed — so a `new` observation declares the years of **silence** that
+   * precede it, and the first reported year is `yearTo + 1`. Phase 5 found the
+   * original single-year form here to be a no-op for both continuity kinds:
+   * the index only covered the named year, so "absent before 2023" and "absent
+   * from 2023 on" could never be expressed.
+   */
   year: number
   yearTo?: number
   kind: DefectKind
@@ -153,14 +162,17 @@ export const DEFECTS: readonly Defect[] = [
     dimension: 'HC',
     code: 'HC.3.1',
     year: 2023,
+    yearTo: 2024,
     kind: 'disappeared',
-    note: 'Inpatient long-term care reported through 2022, absent in 2023.',
+    note: 'Inpatient long-term care reported through 2022, absent from 2023 onward.',
   },
   {
+    // The silent years, not the first reported one — see `Defect.year`.
     iso3: 'PER',
     dimension: 'HC',
     code: 'HC.2.2',
-    year: 2023,
+    year: 2000,
+    yearTo: 2022,
     kind: 'new',
     note: 'Day rehabilitative care reported for the first time in 2023.',
   },
@@ -200,5 +212,52 @@ export function defectFor(iso3: string, code: string, year: number): Defect | un
   return INDEX.get(`${iso3}|${code}|${year}`)
 }
 
+/**
+ * The years a defect's note should appear on — which are not always the years
+ * it acts on.
+ *
+ * A QC finding anchors at the cell a reviewer would open in order to deal with
+ * it, and for the continuity kinds that cell is *outside* the suppressed span:
+ * a "new observation" finding lands on the first year the code appears, and a
+ * "disappeared" one on the last year it was reported. Without this second index
+ * those two findings would be the only ones in the demo with no explanation
+ * attached, which is exactly the opposite of why the defects were declared.
+ */
+const NOTE_INDEX: ReadonlyMap<string, string> = (() => {
+  const m = new Map<string, string>()
+  for (const d of DEFECTS) {
+    const to = d.yearTo ?? d.year
+    const years: number[] =
+      d.kind === 'new'
+        ? [to + 1]
+        : d.kind === 'disappeared'
+          ? [d.year - 1, d.year]
+          : Array.from({ length: to - d.year + 1 }, (_, i) => d.year + i)
+
+    for (const y of years) m.set(`${d.iso3}|${d.code}|${y}`, d.note)
+  }
+  return m
+})()
+
+/** The note to carry on an observation's COMMENT, if any. */
+export function defectNoteFor(iso3: string, code: string, year: number): string | undefined {
+  return NOTE_INDEX.get(`${iso3}|${code}|${year}`)
+}
+
 /** Countries carrying at least one planted defect — the QC demo shortlist. */
 export const DEFECT_COUNTRIES: readonly string[] = [...new Set(DEFECTS.map((d) => d.iso3))]
+
+/**
+ * The `{iso3}|{code}` series a defect is planted on.
+ *
+ * `observations.ts` consults this when deciding whether a country reports a
+ * code at all. Without it a defect can land on a series the country was never
+ * going to report — roughly one in five, by the generator's own sparsity draw —
+ * and the defect is then silently inert: no value to spike, no series to break.
+ * Phase 5 found three of the fourteen in exactly that state (NGA `HF.1.2.1`,
+ * VNM `FS.7`, BGD `HC.3.1`), which is the failure mode declaring the defects
+ * was supposed to prevent in the first place.
+ */
+export const DEFECT_SERIES: ReadonlySet<string> = new Set(
+  DEFECTS.map((d) => `${d.iso3}|${d.code}`),
+)

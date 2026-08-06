@@ -15,6 +15,7 @@
     "verify:setup": "node scripts/verify-setup.mjs",
     "verify:formulas": "node scripts/verify-formulas.mjs",
     "verify:workbook": "node scripts/verify-workbook.mjs",
+    "verify:qc": "node scripts/verify-qc.mjs",
     "verify:zindex": "node scripts/verify-zindex.mjs",
     "verify:shell": "node scripts/verify-shell.mjs"
   },

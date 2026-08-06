@@ -193,6 +193,42 @@ function generate(q: ObservationQuery): Observation[] {
   })
 }
 
+/**
+ * Prior versions of one observation, rebuilt from its key.
+ *
+ * Shared by `getVersions` and `getVersionsBulk` so the single-key and bulk
+ * forms can never disagree about an observation's history — which they would,
+ * eventually, if the bulk form re-derived it independently.
+ */
+function versionsForKey(key: string): readonly ObservationVersion[] {
+  // Rebuild the current observation so versions walk back from the real value.
+  const hash = key.indexOf('#')
+  if (hash < 0) return []
+  const head = key.slice(0, hash)
+  const [iso3, yearStr] = head.split('-')
+  if (!iso3 || !yearStr) return []
+  const year = Number(yearStr)
+
+  const dimsPart = key.slice(hash + 1)
+  const dims: Record<string, string> = {}
+  for (const pair of dimsPart.split('|')) {
+    const eq = pair.indexOf('=')
+    if (eq > 0) dims[pair.slice(0, eq)] = pair.slice(eq + 1)
+  }
+  const entries = Object.entries(dims)
+  const first = entries[0]
+  if (!first) return []
+
+  const current =
+    entries.length === 1
+      ? buildObservation(iso3, year, first[0] as DimensionCode, first[1])
+      : buildCrossObservation(iso3, year, dims)
+
+  if (!current) return []
+  const edited = withEdit(current)
+  return buildVersions(key, edited.value, edited.metadata)
+}
+
 /* --------------------------------------------------------------------------
    Import batches (UC039)
    -------------------------------------------------------------------------- */
@@ -341,34 +377,36 @@ export const mockXMartClient: XMartClient = {
       'pull',
       'HEALTH_EXPENDITURE_HISTORY',
       { $filter: `Sys_ID eq '${key}'`, $orderby: 'Sys_CommitDateUtc desc' },
-      (): readonly ObservationVersion[] => {
-        // Rebuild the current observation so versions walk back from the real value.
-        const hash = key.indexOf('#')
-        const head = key.slice(0, hash)
-        const [iso3, yearStr] = head.split('-')
-        if (!iso3 || !yearStr) return []
-        const year = Number(yearStr)
-
-        const dimsPart = key.slice(hash + 1)
-        const dims: Record<string, string> = {}
-        for (const pair of dimsPart.split('|')) {
-          const eq = pair.indexOf('=')
-          if (eq > 0) dims[pair.slice(0, eq)] = pair.slice(eq + 1)
-        }
-        const entries = Object.entries(dims)
-        const first = entries[0]
-        if (!first) return []
-
-        const current =
-          entries.length === 1
-            ? buildObservation(iso3, year, first[0] as DimensionCode, first[1])
-            : buildCrossObservation(iso3, year, dims)
-
-        if (!current) return []
-        const edited = withEdit(current)
-        return buildVersions(key, edited.value, edited.metadata)
-      },
+      () => versionsForKey(key),
       (r) => r.length,
+    ),
+
+  getVersionsBulk: (keys: readonly string[]) =>
+    call(
+      'getVersionsBulk',
+      'pull',
+      'HEALTH_EXPENDITURE_HISTORY',
+      {
+        // The real request is an `in` filter over the business keys, which is
+        // what makes this one round trip rather than `keys.length` of them.
+        $filter: `Sys_ID in (${keys.length} keys)`,
+        $orderby: 'Sys_ID, Sys_CommitDateUtc desc',
+      },
+      (): ReadonlyMap<string, readonly ObservationVersion[]> => {
+        const out = new Map<string, readonly ObservationVersion[]>()
+        for (const key of keys) {
+          const versions = versionsForKey(key)
+          // Only keys that actually have history: a map with thousands of empty
+          // arrays in it costs memory and tells the caller nothing.
+          if (versions.length > 0) out.set(key, versions)
+        }
+        return out
+      },
+      (r) => {
+        let n = 0
+        for (const v of r.values()) n += v.length
+        return n
+      },
     ),
 
   putObservations: (changes: readonly ObservationChange[]) =>

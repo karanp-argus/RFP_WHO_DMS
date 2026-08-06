@@ -34,7 +34,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { SCALES, SCALE_LABELS, type Scale } from '@/domain/constants'
 import { PASTE_MODES, PASTE_MODE_LABELS } from '@/domain/workbook'
 import { useWorkbookStore } from '@/stores/workbookStore'
-import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 export interface WorkbookToolbarProps {
   editable: boolean
@@ -49,6 +49,9 @@ export interface WorkbookToolbarProps {
   onSeriesTools: () => void
   onBulkStatus: () => void
   onExport: () => void
+  /** UC052 — run the applicable rules over the current selection. */
+  onRunQualityChecks: () => void
+  isCheckingQuality: boolean
   onSave: () => void
   /** The country whose lock the demo control toggles (UC033). */
   lockedCountry: string | null
@@ -67,6 +70,8 @@ export function WorkbookToolbar({
   onSeriesTools,
   onBulkStatus,
   onExport,
+  onRunQualityChecks,
+  isCheckingQuality,
   onSave,
   lockedCountry,
 }: WorkbookToolbarProps) {
@@ -124,15 +129,14 @@ export function WorkbookToolbar({
       <ToolButton label="Export to Excel" onClick={onExport}>
         <Download className="size-3.5" />
       </ToolButton>
+      {/* UC052 — the applicable rules run against what is on screen, and the
+          offending cells are ringed in place. */}
       <ToolButton
-        label="Run quality checks"
-        onClick={() =>
-          toast.info('Quality Checks arrive in Phase 5.', {
-            description: 'The rule engine and the findings panel are the next phase of work.',
-          })
-        }
+        label="Run quality checks on this workbook"
+        disabled={isCheckingQuality}
+        onClick={onRunQualityChecks}
       >
-        <ShieldCheck className="size-3.5 opacity-50" />
+        <ShieldCheck className={cn('size-3.5', isCheckingQuality && 'animate-pulse')} />
       </ToolButton>
 
       <Separator orientation="vertical" className="mx-1 h-5" />

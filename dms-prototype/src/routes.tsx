@@ -29,6 +29,8 @@ import { WorkbookSelectPage } from '@/modules/workbooks/WorkbookSelectPage'
 import { WorkbookPage } from '@/modules/workbooks/WorkbookPage'
 import { ReportsListPage } from '@/modules/reports/ReportsListPage'
 import { QcListPage } from '@/modules/quality/QcListPage'
+import { QcRuleEditorPage } from '@/modules/quality/QcRuleEditorPage'
+import { QcReportPage } from '@/modules/quality/QcReportPage'
 import { NotificationsPage } from '@/modules/notifications/NotificationsPage'
 import { XMartStatusPage } from '@/modules/integration/XMartStatusPage'
 import { RetrievalApiPage } from '@/modules/integration/RetrievalApiPage'
@@ -82,6 +84,22 @@ export const ROUTES: RouteDef[] = [
     module: 'quality',
     Component: QcListPage,
     nav: true,
+  },
+  {
+    // `:ruleId` is `new` on the create path — one route rather than two, so the
+    // editor cannot drift between creating and editing.
+    path: '/quality-checks/rules/:ruleId',
+    label: 'Quality check rule',
+    module: 'quality',
+    Component: QcRuleEditorPage,
+    nav: false,
+  },
+  {
+    path: '/quality-checks/reports/:runId',
+    label: 'Quality check report',
+    module: 'quality',
+    Component: QcReportPage,
+    nav: false,
   },
   {
     path: '/reports',

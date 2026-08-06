@@ -30,7 +30,7 @@ import { CLASSIFICATION_VARIABLES, VARIABLE_BY_CODE } from '../seed/classificati
 import { COUNTRY_BY_ISO3 } from '../seed/countries'
 import { CURRENCY_BY_CODE } from '../seed/currencies'
 import { chance, gaussian, int, pick, range, unit } from './seedRandom'
-import { defectFor } from './defects'
+import { DEFECT_SERIES, defectFor, defectNoteFor } from './defects'
 
 /* --------------------------------------------------------------------------
    Country-level economics
@@ -229,6 +229,9 @@ const ALWAYS_REPORTED: ReadonlySet<string> = new Set([
 /** Whether a country reports a given leaf code at all. */
 function reportsCode(iso3: string, code: string): boolean {
   if (ALWAYS_REPORTED.has(code)) return true
+  // A declared defect implies the country reports the series — otherwise the
+  // defect is planted on twenty-five years of blanks and does nothing at all.
+  if (DEFECT_SERIES.has(`${iso3}|${code}`)) return true
   // Rare instruments are reported by only a handful of countries.
   if (RARE_CODES.has(code)) return chance(`rare|${iso3}|${code}`, 0.12)
   // ~18% of ordinary leaf codes are never reported by a given country.
@@ -385,13 +388,13 @@ function leafValue(iso3: string, year: number, code: string): number | null {
 export function derivedValue(iso3: string, year: number, code: string): number | null {
   const defect = defectFor(iso3, code, year)
 
-  // Structural defects short-circuit before any value is produced.
+  // Structural defects short-circuit before any value is produced. All three
+  // suppress the value across the years they are declared over — for `new`
+  // those are the years of silence *before* the code first appears, and for
+  // `disappeared` the years from the stoppage to the end of the corpus.
   if (defect) {
-    if (defect.kind === 'gap') return null
-    if (defect.kind === 'disappeared') return null
-    if (defect.kind === 'new') {
-      // Absent before the defect year, present from it onward.
-      if (year < defect.year) return null
+    if (defect.kind === 'gap' || defect.kind === 'disappeared' || defect.kind === 'new') {
+      return null
     }
   }
 
@@ -457,9 +460,11 @@ function deriveMetadata(
   }
 
   // A defect's note becomes a real comment, so a QC finding always traces back
-  // to something a human can read on the cell.
-  const defect = defectFor(iso3, code, year)
-  if (defect && defect.kind !== 'gap') md.COMMENT = defect.note
+  // to something a human can read on the cell. `defectNoteFor` rather than
+  // `defectFor` because a continuity finding anchors on the year either side of
+  // the suppressed span, not inside it.
+  const note = defectNoteFor(iso3, code, year)
+  if (note) md.COMMENT = note
 
   if (value != null) {
     md.EST_METHOD = chance(`md.est|${k}`, 0.7)

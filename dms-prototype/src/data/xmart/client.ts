@@ -119,6 +119,18 @@ export interface XMartClient {
   getObservations(query: ObservationQuery): Promise<ObservationPage>
   /** UC043/UC044 — up to 10 prior versions of one observation. */
   getVersions(observationKey: string): Promise<readonly ObservationVersion[]>
+  /**
+   * Prior versions for many observations in one round trip.
+   *
+   * UC053's *"growth between two data versions"* rule needs the version history
+   * of every observation it checks — thousands of them for a regional run. Per
+   * key that is thousands of requests, which is not how anybody would build it
+   * against a real warehouse, so the interface offers the bulk form the rule
+   * actually needs rather than making the caller loop.
+   */
+  getVersionsBulk(
+    observationKeys: readonly string[],
+  ): Promise<ReadonlyMap<string, readonly ObservationVersion[]>>
   /** UC046 — push DMS edits back to the warehouse. */
   putObservations(changes: readonly ObservationChange[]): Promise<PutResult>
 

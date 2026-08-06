@@ -41,7 +41,10 @@ import {
 import { evaluateAst, type FormulaEngine } from '@/domain/formula'
 import { useMetadataFields, useVariables } from '@/hooks/useSetupData'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useQcRun, rulesForSelection } from '@/hooks/useQcRun'
 import { useWorkbookData, type WorkbookCell } from '@/hooks/useWorkbookData'
+import { findingsByObservation, type QcFinding, type QcRunResult } from '@/domain/qc'
+import { allRules, useQcStore, visibleRules } from '@/stores/qcStore'
 import { currentSnapshot, setWorkbookAuthor, useWorkbookStore } from '@/stores/workbookStore'
 import { BulkStatusDialog } from './BulkStatusDialog'
 import { FormulaBar } from './FormulaBar'
@@ -52,10 +55,9 @@ import { VersionCompareDialog } from './VersionCompareDialog'
 import { WorkbookFilterChips } from './WorkbookFilterChips'
 import { WorkbookGrid, type GridCellRef, type GridRangeRef } from './WorkbookGrid'
 import { WorkbookToolbar } from './WorkbookToolbar'
+import { QcFindingsPanel } from './QcFindingsPanel'
 import { exportWorkbookXlsx } from './exportWorkbook'
 import type { CellFinding } from './gridContext'
-
-const NO_FINDINGS = () => undefined
 
 export function WorkbookPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -148,6 +150,9 @@ export function WorkbookPage() {
     setActiveCell(null)
     setRange(null)
     setMetadataOpen(false)
+    // A ring left over from the previous workbook would point at a cell that is
+    // no longer on screen, so findings go with the selection that produced them.
+    setQcRun(null)
   }, [selectionKey])
 
   /* --- permissions and locking (UC033) ----------------------------------- */
@@ -423,6 +428,77 @@ export function WorkbookPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [handleCopy, handlePaste, undoAction, redoAction, invalidate])
 
+  /* --- quality checks (UC052) -------------------------------------------- */
+
+  /**
+   * Findings for the workbook currently open.
+   *
+   * Held here rather than in `qcStore` because they belong to *this view*: they
+   * are produced from the selection on screen and are meaningless against a
+   * different one. The selection-change effect below clears them for the same
+   * reason it clears the active cell — a red ring left over from the previous
+   * workbook would be pointing at a cell that no longer exists.
+   */
+  const [qcRun, setQcRun] = useState<QcRunResult | null>(null)
+  const { run: runQualityChecks, isRunning: isCheckingQuality } = useQcRun()
+  const qcRuleEdits = useQcStore((s) => s.ruleEdits)
+  const qcRemovedRuleIds = useQcStore((s) => s.removedRuleIds)
+
+  const findingsByCell = useMemo(
+    () => (qcRun ? findingsByObservation(qcRun.findings) : null),
+    [qcRun],
+  )
+
+  /** Findings whose cell is not in the grid — counted, so nothing is hidden. */
+  const { visibleFindings, offScreenFindings } = useMemo(() => {
+    if (!qcRun) return { visibleFindings: [] as QcFinding[], offScreenFindings: 0 }
+    const onScreen = new Set<string>()
+    for (const row of rows) {
+      for (const column of columns) {
+        const cell = getCell(row.key, column.key)
+        if (cell) onScreen.add(cell.observationKey)
+      }
+    }
+    const inView = qcRun.findings.filter((f) => onScreen.has(f.observationKey))
+    return { visibleFindings: inView, offScreenFindings: qcRun.findings.length - inView.length }
+  }, [qcRun, rows, columns, getCell])
+
+  const handleRunQualityChecks = useCallback(async () => {
+    const rules = visibleRules(
+      allRules(qcRuleEdits, qcRemovedRuleIds),
+      user?.email,
+      user?.role === 'administrator',
+    )
+    // UC052's "applicable rules": the ones that name something on screen. A
+    // rule about HC codes has nothing to say about an HF workbook, and running
+    // it would report findings on cells the user cannot see.
+    const applicable = rulesForSelection(rules, selection.variables)
+    if (applicable.length === 0) {
+      toast.info('No quality check rules apply to the variables in this workbook.', {
+        description: 'Rules are matched to the codes on screen. The Quality Checks module runs the full set.',
+      })
+      return
+    }
+
+    const years = selection.years.length > 0 ? selection.years : [...YEARS]
+    const outcome = await runQualityChecks(applicable, {
+      kind: 'workbook',
+      label: shape ? workbookTitle(selection, shape, COUNTRY_BY_ISO3) : 'Workbook',
+      countries: [...selection.countries],
+      yearFrom: Math.min(...years),
+      yearTo: Math.max(...years),
+    })
+    if (!outcome) return
+
+    setQcRun(outcome)
+    toast[outcome.summary.errors > 0 ? 'error' : outcome.summary.warnings > 0 ? 'warning' : 'success'](
+      outcome.findings.length === 0
+        ? `All ${applicable.length} applicable rules passed.`
+        : `${outcome.summary.errors} failures and ${outcome.summary.warnings} warnings from ${applicable.length} rules.`,
+      { description: 'Offending cells are ringed in the grid.' },
+    )
+  }, [qcRuleEdits, qcRemovedRuleIds, user, selection, shape, runQualityChecks])
+
   /* --- save (UC046) ------------------------------------------------------ */
 
   const handleSave = useCallback(async () => {
@@ -464,7 +540,17 @@ export function WorkbookPage() {
       scale,
       showCodes,
       editable,
-      findingFor: NO_FINDINGS as (key: string) => CellFinding | undefined,
+      // UC052 — the seam Phase 4 left for this. The cell renderer already rings
+      // an error red and a warning amber and shows the message on hover.
+      findingFor: (key: string): CellFinding | undefined => {
+        const finding = findingsByCell?.get(key)
+        if (!finding) return undefined
+        return {
+          observationKey: key,
+          severity: finding.severity,
+          message: `${finding.ruleName} — ${finding.message}`,
+        }
+      },
       onOpenMetadata: (rowKey: string, columnKey: string) => {
         setActiveCell({ rowKey, columnKey })
         setMetadataOpen(true)
@@ -473,7 +559,7 @@ export function WorkbookPage() {
         setVersionsFor(getCell(rowKey, columnKey))
       },
     }),
-    [getCell, scale, showCodes, editable],
+    [getCell, scale, showCodes, editable, findingsByCell],
   )
 
   if (!shape) {
@@ -542,6 +628,8 @@ export function WorkbookPage() {
         onExport={() =>
           exportWorkbookXlsx({ rows, columns, getCell, title, scale })
         }
+        onRunQualityChecks={handleRunQualityChecks}
+        isCheckingQuality={isCheckingQuality}
         onSave={handleSave}
         lockedCountry={selection.countries[0] ?? null}
       />
@@ -579,6 +667,32 @@ export function WorkbookPage() {
               onActiveCellChange={retainActiveCell}
               onSelectionChange={retainRange}
             />
+            {/* UC052 — findings below the grid, not on another screen. */}
+            {qcRun ? (
+              <div className="mt-2">
+                <QcFindingsPanel
+                  summary={qcRun.summary}
+                  findings={visibleFindings}
+                  offScreenCount={offScreenFindings}
+                  activeObservationKey={activeWorkbookCell?.observationKey ?? null}
+                  onSelect={(finding) => {
+                    // Move the grid's selection onto the offending cell, so
+                    // reading a finding and fixing the value are one motion.
+                    for (const row of rows) {
+                      for (const column of columns) {
+                        const cell = getCell(row.key, column.key)
+                        if (cell?.observationKey === finding.observationKey) {
+                          setActiveCell({ rowKey: row.key, columnKey: column.key })
+                          return
+                        }
+                      }
+                    }
+                  }}
+                  onClose={() => setQcRun(null)}
+                />
+              </div>
+            ) : null}
+
             <p className="mt-1 text-[length:var(--text-meta)] text-who-text-muted">
               {rows.length} rows × {columns.length} columns ·{' '}
               <span className="inline-flex items-center gap-1">

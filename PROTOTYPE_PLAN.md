@@ -634,6 +634,85 @@ and it belongs with the Phase 7 admin screens rather than bolted onto the grid.
 
 **Done when:** running the full predefined set over EURO produces a report with real findings that trace back to the defects planted in Phase 1, and running from a workbook visibly marks the offending cells. → **UC047, 048, 050, 052, 053, 054, 055** (+ 049, 051).
 
+**Outcome (built, verified, committed).** `src/domain/qc/` is pure and tested: rule
+types, the UC054 threshold table, seventeen delivered rules, the runner, and the UC051
+exchange format. Above it, `qcStore`, `useQcRun`, three tabs, a rule editor, a report
+page and the workbook integration. **241 passing tests** (50 new domain tests, 25 new
+corpus tests) and a **49-check browser harness** (`npm run verify:qc`).
+
+*Ten rule types, not nine.* The FR's list counts nine by sentence, but *new*,
+*disappeared* and *missing* are three different comparisons against three different
+windows — a code that starts, a code that stops, and a hole between two reported years.
+They are three types here. Every category the FR names is covered; only the counting
+differs.
+
+**The "over EURO" acceptance was wrong, and the plan is corrected rather than the
+demo fudged.** The fourteen defect countries were chosen in Phase 1 and not one is in
+the European Region, so a EURO run cannot trace to a planted defect. It still produces
+real findings — reconciliation breaks, version drift, reporting gaps and outliers all
+arise from the generator's own variation — but not the beat this line describes. The
+default scope is now a curated **"Quality Checks demo set"** (`data/qc/demoScope.ts`):
+every defect country plus enough peers that each region and income group clears the
+five-member minimum an outlier comparison needs. Running by region, income group or
+OECD membership is unchanged and fully supported. `phase5.test.ts` asserts all fourteen
+defects are found, by the rule category each was planted for.
+
+**Phase 5 found three Phase 1 bugs that every Phase 1 test had passed over.** Declared
+defects were never checked for having any effect:
+- **Three defects sat on series their country never reports.** The generator drops ~18%
+  of country×code pairs, and NGA `HF.1.2.1`, VNM `FS.7` and BGD `HC.3.1` lost that draw —
+  so the defect was planted on twenty-five years of blanks and did nothing. `reportsCode`
+  now honours `DEFECT_SERIES`.
+- **The `new` kind never suppressed a value.** Its guard was `year < defect.year` while
+  the index only covered the defect year itself, so the condition could never be true.
+  A `new` defect now declares the years of *silence* and the first reported year is
+  `yearTo + 1`.
+- **`disappeared` produced a one-year hole, not a stoppage**, for the same
+  single-year-index reason — it was being caught by the *missing* rule instead.
+
+A fourth needed a second index rather than a fix: a continuity finding anchors on the
+year either side of the suppressed span, so `defectNoteFor` carries the note to the cell
+the finding actually lands on. Without it those two findings would have been the only
+ones in the demo with no explanation attached.
+
+**Thresholds are measured, not guessed.** A throwaway pass ran the rule set over the real
+corpus and printed per-rule counts and deviation percentiles; three rules were retuned
+from what it showed. Two are worth recording:
+- **The absolute-growth rule fired 1,776 times** — 66% of all findings — because health
+  expenditure in NCU millions spans six orders of magnitude across countries. It now ships
+  at 250k/1M *and with nine high-denomination-currency countries already excluded*, which
+  turned the weakest rule into the clearest demonstration of why UC048 exists.
+- **Cross-sectional outliers do not discriminate on this corpus.** Government health
+  expenditure runs from 8% to 75% of CHE across upper-middle-income countries, so ZAF's
+  planted 7.8% sat 1.4 robust sigma from the median — inside the noise. The delivered
+  outlier rules therefore compare the **year-on-year movement** in a share rather than its
+  level: health systems differ from each other far more than they differ from themselves,
+  so a country that jumps while its peers hold steady is unmistakable where a country
+  sitting at an unusual level is not. The comparison population is still the peer group.
+  Plain level comparison remains available in the editor, described honestly.
+
+*Also worth noting:* the between-category rule is a **share-stability** check, not the
+obvious children-versus-parent sum. That sum is identically zero here by construction —
+CLAUDE.md's rule is that aggregates are never generated, so every parent *is* the sum of
+its children — and shipping it would have been theatre.
+
+**Two interface additions.** `XMartClient.getVersionsBulk` — the version-growth rule needs
+history for every cell it checks, which is thousands per run and is not something anyone
+would build as thousands of requests. And `CountryPicker` gained an `ariaLabel`, because
+its trigger's accessible name was whatever the placeholder happened to say and changed the
+moment something was selected.
+
+**The browser harness caught a permission bug worth stating.** `canEdit('quality')` was
+gating everything, which let a regular user edit the delivered rules. The two rights are
+different: UC050 is written from a regular user's point of view and *gives* them custom
+rules private to themselves, while changing a rule everybody runs — or the UC054
+thresholds every report is judged against — is `canCreatePredefined`. Both are now
+enforced per rule and asserted in the harness.
+
+*Deferred, and stated rather than quietly dropped:* the bundle is now **1.92 MB
+(586 kB gzipped)**, up from 1.47 MB, because Recharts is imported for real for the first
+time. Route-level `React.lazy` remains the Phase 8 packaging task it already was.
+
 ### Phase 6 — Reports module (2 d)
 
 1. `pivot.ts` — rows / columns / values / filters / groupings over observations, with subtotals.
@@ -683,7 +762,7 @@ and it belongs with the Phase 7 admin screens rather than bolted onto the grid.
 | 6:00 | Open cell metadata, fill a series gap, bulk-set "Ready to publish" | UC024, 027 |
 | 7:00 | Right-click → compare 4 versions → restore | UC043, 044 |
 | 8:00 | Run QC from the workbook → cells ring red → open the QC report → download | UC052, 055 |
-| 9:00 | QC module: run the predefined set over EURO, show the outlier scatter | UC047, 048, 053, 054 |
+| 9:00 | QC module: run the delivered set over the demo scope, show the outlier scatter, name the dev vs admin rule badges | UC047, 048, 053, 054 |
 | 10:00 | Reports: build a pivot, run for 5 countries, 5 `.xlsx` arrive via notification | UC035, 036, 042 |
 | 11:00 | Users: flip Setup permission to *View*, switch to a regular user, controls vanish | UC004, 007, 008, 012 |
 | 11:30 | Retrieval API page: generate the Annex 3 request, download the CSV | Annex 3, UC045, 046 |

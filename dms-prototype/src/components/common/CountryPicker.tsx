@@ -43,6 +43,14 @@ export interface CountryPickerProps {
   placeholder?: string
   /** ISO3 codes the user may not select (UC009 country restrictions). */
   disabledCountries?: readonly string[]
+  /**
+   * Accessible name for the trigger.
+   *
+   * Without one the button's name is whatever the placeholder happens to say,
+   * which changes as soon as something is selected — so a screen reader user
+   * loses the label the moment they use the control.
+   */
+  ariaLabel?: string
 }
 
 export function CountryPicker({
@@ -51,6 +59,7 @@ export function CountryPicker({
   max,
   placeholder = 'Select countries…',
   disabledCountries = [],
+  ariaLabel,
 }: CountryPickerProps) {
   const [open, setOpen] = useState(false)
   const disabled = useMemo(() => new Set(disabledCountries), [disabledCountries])
@@ -92,6 +101,7 @@ export function CountryPicker({
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            {...(ariaLabel ? { 'aria-label': ariaLabel } : {})}
             className="w-full justify-between font-normal"
           >
             <span className="truncate text-who-text">
