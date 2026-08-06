@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:ital,wght@0,200;0,300;0,400;0,600;0,700;0,900;1,300&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+        <link href="css/jee-style.css" rel="stylesheet" >
+        <title>JEE Reporting</title>
+    </head>
+    <body>
+
+        <div class="page-wrapper-full">
+            <!--header starts-->
+            <header>
+                <div class="header-wrapper">
+                    <div class="row">
+                        <div class="col-1 col-sm-2 col-md-6 col-lg-4 col-xl-3 py-3 d-block d-md-none">
+                            <div class="mobile-menu d-block d-md-none">
+                                <div class="bar1"></div>
+                                <div class="bar2"></div>
+                                <div class="bar3"></div>
+                            </div>
+                        </div>
+                        <div class="col-9 col-sm-9 col-md-4 col-lg-4 col-xl-3 py-3 search-wrapper  d-none d-md-block">
+
+                            <span class="search-icon"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control search-input" placeholder="Search"/> 
+                        </div>
+                        <div class="col-11 col-sm-10 col-md-8 col-lg-8 col-xl-9">
+                            <ul class="list-unstyled top-right-menu float-end mb-0">
+                                <li><i class="bi bi-question-circle"></i></li>
+                                <li><i class="bi bi-chat-right-text"></i></li>
+                                <li><i class="bi bi-bell-fill"></i></li>
+                                <li class="user-name">
+                                    John Doe<br>Focal Point <i class="bi bi-chevron-down arrow fw-bold" ></i><span class="user-avtaar fix-position">
+                                        <img src="images/user.jpg" class="img-fluid"/>
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+            </header>
+            <!--//header ends-->
+            <!--sidebar starts-->
+            <div class="sidebar ">
+                <div class="close-sidebar"><i class="bi bi-x-lg"></i></div>
+
+                <div class="logo-placeholder fw-bold">
+                    JEE Reporting
+                </div>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-house-door"></i> Home</li>
+                    <li><i class="bi bi-bar-chart-fill"></i> Dashboard</li>
+                    <li><i class="bi bi-envelope"></i> Self Assessment</li>
+                    <li><i class="bi bi-receipt-cutoff"></i> Request JEE Mission</li>
+                    <li><i class="bi bi-journal-check"></i> JEE Mission</li>
+                    <li class="active"><i class="bi bi-person"></i> Users</li>
+                    <li><i class="bi bi-chat-right-text"></i> Chat Room</li>
+                    <li><i class="bi bi-folder2-open"></i> File Repository</li>
+                    <li class="mt-5"><i class="bi bi-question-circle"></i> Help Center</li>
+                    <li><i class="bi bi-gear-fill"></i> Settings</li>
+                </ul>
+            </div>
+            <!--//sidebar starts-->
+
+            <div class="content">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col">
+                            <h2>Self Assessment</h2>
+
+                            <ul class="nav nav-pills my-3 custom-tab" id="pills-tab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link " id="current-assessment-tab" data-bs-toggle="pill" data-bs-target="#current-assessment" type="button" role="tab" aria-controls="pills-home" aria-selected="true">Current Version</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="prev-assessment-tab" data-bs-toggle="pill" data-bs-target="#previous-assessment" type="button" role="tab" aria-controls="pills-profile" aria-selected="false">Previous Version</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="new-assessment-tab" data-bs-toggle="pill" data-bs-target="#new-assessment" type="button" role="tab" aria-controls="pills-profile" aria-selected="false">Create New </button>
+                                </li>
+                            </ul>
+                            <div class="tab-content" id="pills-tabContent">
+
+                                <div class="tab-pane fade" id="current-assessment" role="tabpanel" aria-labelledby="current-assessment-tab">
+                                    <div class="card custom-card">
+                                        <div class="card-body">
+
+
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="previous-assessment" role="tabpanel" aria-labelledby="prev-assessment-tab">
+                                    <div class="card custom-card">
+                                        <div class="card-body">
+
+
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade  show active" id="new-assessment" role="tabpanel" aria-labelledby="new-assessment-tab">
+                                    <div class="row">
+                                        <div class="col-12  mb-3 col-lg-12 col-xl-7 col-xxl-7">
+                                            <div class="card custom-card">
+                                                <div class="card-body" style="min-height: 500px;">
+                                                    <div class="row">
+                                                        <div class="col-12 col-md-7"><h5 class="text-uppercase">Create a JEE Self Assessment Report</h5></div>
+                                                        <div class="col-12 col-md-5 text-end"> <span class=" auto-generated-text">ID# Auto-Generated </span></div>
+                                                    </div>
+
+                                                    <hr/>
+                                                    <div class="form-check form-check-inline ps-0">
+                                                        <label class="radioinput-container float-left">Clone Self-Assessment
+                                                            <input type="radio" checked="checked" name="radio">
+                                                            <span class="checkmark"></span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline ps-0">
+                                                        <label class="radioinput-container float-left">New Self-Assessment
+                                                            <input type="radio" checked="checked" name="radio">
+                                                            <span class="checkmark"></span>
+                                                        </label>
+                                                    </div>
+                                                    <div class="float-end">
+                                                        November 2020
+                                                    </div>
+                                                    <div class="clearfix"></div>
+                                                    <div class="row">
+                                                        <div class="col-12 col-md-10 col-lg-8 col-xl-8">
+                                                            <select class="form-select general-select border-only my-4" aria-label="Default select">
+                                                                <option value="1">Previous Assessment ID</option>
+                                                            </select>
+                                                            <select class="form-select general-select border-only my-4" aria-label="Default select">
+                                                                <option value="1">Language</option>
+                                                            </select>
+                                                            <select class="form-select general-select border-only my-4" aria-label="Default select">
+                                                                <option value="1">Expected Completion Date</option>
+                                                            </select>
+                                                            <textarea class="form-control border-only" rows="4" placeholder="Remarks" ></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-lg-12 col-xl-5 col-xxl-5">
+                                            <div class="card custom-card">
+                                                <div class="card-body" style="min-height: 500px;">
+                                                    <h5 class="">Country Multi-Sectoral Team</h5>
+                                                    <hr/>
+                                                    <div class="team-list" style="overflow: auto; height: 316px;">
+
+                                                        <ul class="list-unstyled">
+
+                                                            <li>
+                                                                <h6>David Lee, <span class="fw-normal">Team Lead</span></h6>
+                                                                <span class="user-avtaar"><img src="images/user.jpg" class="img-fluid"></span>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck1">
+                                                                    <label class="form-check-label" for="exampleCheck1">Prevent</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck2">
+                                                                    <label class="form-check-label" for="exampleCheck2">Detect</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck3">
+                                                                    <label class="form-check-label" for="exampleCheck3">Respond</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck4">
+                                                                    <label class="form-check-label" for="exampleCheck4">Hazards/PoE</label>
+                                                                </div>
+                                                                <div class="clearfix"></div>
+                                                            </li>
+
+                                                            <li>
+                                                                <h6>Alex Johnson</h6>
+                                                                <span class="user-avtaar"><img src="images/user.jpg" class="img-fluid"></span>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck5">
+                                                                    <label class="form-check-label" for="exampleCheck5">Prevent</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck6">
+                                                                    <label class="form-check-label" for="exampleCheck6">Detect</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck7">
+                                                                    <label class="form-check-label" for="exampleCheck7">Respond</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck8">
+                                                                    <label class="form-check-label" for="exampleCheck8">Hazards/PoE</label>
+                                                                </div>
+                                                                <div class="clearfix"></div>
+                                                            </li>
+                                                            <li>
+                                                                <h6>Jonathan Chen</h6>
+                                                                <span class="user-avtaar"><img src="images/user.jpg" class="img-fluid"></span>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck9">
+                                                                    <label class="form-check-label" for="exampleCheck9">Prevent</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck10">
+                                                                    <label class="form-check-label" for="exampleCheck10">Detect</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck11">
+                                                                    <label class="form-check-label" for="exampleCheck11">Respond</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck12">
+                                                                    <label class="form-check-label" for="exampleCheck12">Hazards/PoE</label>
+                                                                </div>
+                                                                <div class="clearfix"></div>
+                                                            </li>
+                                                            <li>
+                                                                <h6>Robert Grant</h6>
+                                                                <span class="user-avtaar"><img src="images/user.jpg" class="img-fluid"></span>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck13">
+                                                                    <label class="form-check-label" for="exampleCheck13">Prevent</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck14">
+                                                                    <label class="form-check-label" for="exampleCheck14">Detect</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck15">
+                                                                    <label class="form-check-label" for="exampleCheck15">Respond</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck16">
+                                                                    <label class="form-check-label" for="exampleCheck16">Hazards/PoE</label>
+                                                                </div>
+                                                                <div class="clearfix"></div>
+                                                            </li>
+                                                            <li>
+                                                                <h6>David James</h6>
+                                                                <span class="user-avtaar"><img src="images/user.jpg" class="img-fluid"></span>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck17">
+                                                                    <label class="form-check-label" for="exampleCheck17">Prevent</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck18">
+                                                                    <label class="form-check-label" for="exampleCheck18">Detect</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck19">
+                                                                    <label class="form-check-label" for="exampleCheck19">Respond</label>
+                                                                </div>
+                                                                <div class=" me-2 form-check float-start">
+                                                                    <input type="checkbox" class="form-check-input" id="exampleCheck20">
+                                                                    <label class="form-check-label" for="exampleCheck20">Hazards/PoE</label>
+                                                                </div>
+                                                                <div class="clearfix"></div>
+                                                            </li>
+
+
+                                                        </ul>
+
+                                                    </div>
+                                                    <div class="text-center mt-4">
+                                                        <a href="#" class="no-underline font-size-13 fw-bold">Manage Team</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <hr>  
+                                            <button class="btn secondary-btn text-white float-end  px-5 py-2 btn-block" style="min-width:180px;">Create </button>
+                                        </div>
+
+
+
+
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+            <!--page-wrapper-full-->
+        </div>
+
+        <!-- Option 2: Separate Popper and Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" ></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js" ></script>
+        <script src="js/custom-script.js"></script>
+
+    </body>
+</html>

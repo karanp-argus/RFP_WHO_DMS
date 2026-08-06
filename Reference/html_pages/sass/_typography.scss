@@ -1,0 +1,47 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : May 24, 2021, 3:17:56 PM
+    Author     : Mjohn
+*/
+$font-size-base:            1rem !default; // Assumes the browser default, typically `16px`
+
+$font-size-base:            16px;
+
+//Headings
+$h1-font-size:              $font-size-base * 2.5 !default;       //40px
+$h2-font-size:              $font-size-base * 2.25 !default;      //36px
+$h3-font-size:              $font-size-base * 1.875 !default;     //30px
+$h4-font-size:              $font-size-base * 1.5 !default;       //24px
+$h5-font-size:              $font-size-base * 1.25;                 //20px
+$h6-font-size:              $font-size-base !default;             //16px
+
+//bodytext
+$body-text-18:                $font-size-base * 1.125;              //18px
+$body-text-15:                $font-size-base * 0.9375;             //15px
+$body-text-14:                14px                  ;               //14px
+$body-text-12:                $font-size-base * 0.75;               //12px
+$body-text-10:                $font-size-base * 0.625;               //10px
+
+
+.font-size-10{
+    font-size:  $body-text-10; 
+}
+.font-size-11{
+    font-size: 11px;  
+}
+.font-size-12{
+    font-size:  $body-text-12; 
+}
+.font-size-13{
+    font-size: 13px; 
+}
+.font-size-10{
+    font-size: $body-text-14;
+}
+.font-size-11{
+    font-size: $body-text-15; 
+}

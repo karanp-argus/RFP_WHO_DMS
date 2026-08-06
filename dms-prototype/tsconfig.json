@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  /* The real alias lives in tsconfig.app.json (and vite.config.ts). It is
+     mirrored here because the shadcn CLI resolves aliases from the root
+     tsconfig only, and fails to load the workspace without it. */
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}

@@ -1,0 +1,442 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : May 24, 2021, 2:41:01 PM
+    Author     : Mjohn
+*/
+
+/*Header*/
+header .header-wrapper{
+    height:70px;
+    margin-left: 260px;
+    background: #fff;
+    box-shadow: 0px 2px 4px rgba(0,0,0,0.4);
+    padding:0px 24px 0px 30px;
+    position:fixed;
+    width:calc(100% - 260px);
+    z-index: 99;
+    top: 0;
+
+    @media(max-width:767px){
+        margin-left: 0px;   
+        width:100%;
+    }
+
+}
+
+.login-banner{
+    background: url(../images/banner.png);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    height:100vh;
+    @media(max-width:767px){
+        height:40vh;
+    }
+}
+.jee-reporting-title{
+    font-size: $h2-font-size;
+    font-weight: bold;
+    color:$violet-dark;
+    letter-spacing: 8px;
+}
+.tagline{
+    font-size: $body-text-18;
+    color:$violet-50;
+}
+.page-wrapper-full{
+    min-height: 100vh;
+    background: #F0F0F7;
+}
+.content{
+    padding-left: 300px;
+    padding-top:110px;
+    padding-right: 40px;
+    padding-bottom: 80px;
+    @media(max-width:767px){
+        padding-left: 0px;   
+        padding-right: 0px; 
+    }
+}
+h2{
+    color: $violet-dark;
+    font-size: 28px;
+
+}
+.secondary-btn{
+    background: $violet-dark;
+    font-size: $body-text-18;
+    border:none;
+    &:hover,&:visited,&:active,&:focus{
+        background: $primary-blue;
+        box-shadow: none !important;
+    }
+}
+.input-borderbottom-only{
+    border:none;
+    border-bottom: 1px solid #E9E9F0;
+    border-radius:0;
+    &:focus{
+        box-shadow: 0px 1px 0px #4d7ac4;;
+        border-bottom: 1px solid #4D7AC4;    
+    }
+}
+.search-wrapper{
+    position: relative;
+    @media(max-width:767px){
+        padding-left: 50px;    
+    }
+}
+.search-input{
+    border-radius: 20px;
+    border:1px solid #A4AFB7;
+    padding-left: 40px;
+    font-size: $body-text-14;
+
+}
+.search-icon{
+    position: absolute;
+    top: 22px;
+    left: 24px;
+    color: #BCBCCB;
+}
+.user-avtaar{
+    display: inline-block;
+    width:38px;
+    height: 38px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: white;
+    line-height: normal;
+    &.fix-position{
+        position: absolute;
+        right:0px;
+        top:16px;
+    }
+}
+.user-avtaar-big{
+    display: inline-block;
+    width:200px;
+    height: 200px;
+    border-radius: 50%;
+
+    background: white;
+    line-height: normal;
+    border:1px solid #808495;
+    position:relative;
+    img{
+        border-radius: 50%;
+        width:100%;
+        height:100%;
+    }
+}
+.edit-icon{
+    width:55px;
+    height:55px;
+    border-radius: 50%;
+    position: absolute;
+    right:0px;
+    bottom:20px;
+    border:1px solid #808495;
+    background: #fff;
+    line-height: 55px;
+    font-size: $body-text-18;
+    text-align: center;
+}
+.top-right-menu{
+    line-height: 70px;
+    color:#BCBCCB;
+    li{
+        float:left;
+        padding:0px 16px;
+        cursor:pointer;
+        @media(max-width:567px){
+            padding:0px 10px;    
+        }
+    }
+    .user-name{
+        font-size: $body-text-14;
+        position: relative;
+        padding-right: 60px;
+        color: #4D4F5C;
+        line-height: normal;
+        padding-top: 16px;
+        cursor:pointer;
+        &:before{
+            content: "";
+            height: 30px;
+            width: 1px;
+            display: inline-block;
+            background: #BCBCCB;
+            position: absolute;
+            left: 0px;
+            top: 20px;
+
+        }
+        .arrow{
+            position: absolute;
+            top: 60%;
+            transform: translateY(-50%);
+        }
+    }
+}
+
+.custom-tab{
+    li{
+        min-width: 160px;
+        font-size:$body-text-15;
+
+        .nav-link{
+            width: 100%;
+            background: transparent;
+            font-weight:600;
+            color:$violet-50;
+            text-align:left;
+            &.active{
+                color:$primary-blue;
+                background: transparent;
+                border-bottom: 3px solid $primary-blue;
+                border-radius: 0px;
+            }
+            @media(max-width:567px){
+                padding: 8px 0;
+            }
+        }
+    }
+    border-bottom: 1px solid #d3d3d480;
+}
+.custom-card{
+    box-shadow:4px 4px 11px #dedee2;
+    .card-body{
+        padding: 40px 30px;
+    }
+}
+.general-input,.general-select{
+    &:focus{
+        box-shadow: none;
+    }
+    &.border-only{
+        border:none;
+        border-bottom:1px solid  $light-gray;
+        border-radius: 0px;
+    }
+}
+textarea{
+    &.border-only{
+        border:none;
+        border-bottom:1px solid $light-gray;
+        border-radius: 0px;
+         resize: none;
+    }
+    &:focus{
+        box-shadow: none !important;
+    }
+}
+.add-button{
+    padding:0px 10px;
+    i{
+        font-size: $h3-font-size;
+    }
+}
+.custom-table{
+    color:$light-gray;
+    th{
+        font-size: $body-text-12;
+        text-transform: uppercase;
+        color:#444;
+    }
+    td{
+        position: relative;
+        vertical-align: middle;
+        padding-top: 20px;
+        padding-bottom: 20px;
+    }
+    .user-detail{
+        padding-left:44px;
+        color: $violet-dark;
+        font-size:$font-size-base;
+        margin-bottom:0px;
+        font-weight: bold;
+        font-size: $body-text-14;
+        .user-avtaar{
+            position: absolute;
+            left:0;
+            top: 20px;
+        }
+        .user-email{
+            color:$light-gray;
+            font-weight: normal;
+            font-size: $body-text-12;
+        }
+    }
+}
+.custom-switch{
+    .form-check-input{
+        width: 3.5rem;
+        height: 1.5rem;
+        &:focus{
+            box-shadow: none;
+        }
+        &:hover,&:active{
+            border:1px solid rgba(0,0,0,.25);
+        }
+    }
+
+}
+.custom-pagination{
+    border-radius:  .25rem;
+    box-shadow: 2px 2px 4px #dcdcdc;
+}
+h4{
+    font-size: $h3-font-size;
+    color:$violet-dark;
+}
+h5{
+    color:$violet-dark;
+}
+.modal-close-btn{
+    position: absolute;
+    right:10px;
+    top:10px;
+    &:focus{
+        box-shadow: none;
+    }
+}
+.form-check-input.custom-input{
+    border: 2px solid #3B86FF;
+    width: 24px;
+    height: 24px;
+    cursor:pointer;
+    &:focus{
+        box-shadow: none;
+    }
+}
+
+.mobile-menu{
+    position: absolute;
+    left: 10px;
+    top: 15px;
+    cursor:pointer;
+
+    .bar1, .bar2, .bar3 {
+        width: 30px;
+        height: 2px;
+        background-color: #333;
+        margin: 8px 0;
+        transition: 0.4s;
+    }
+}
+/* Rotate first bar */
+.close-menu .bar1 {
+    -webkit-transform: rotate(-45deg) translate(-9px, 6px) ;
+    transform: rotate(-45deg) translate(-7px, 6px) ;
+}
+
+/* Fade out the second bar */
+.close-menu .bar2 {
+    opacity: 0;
+}
+
+/* Rotate last bar */
+.close-menu .bar3 {
+    -webkit-transform: rotate(45deg) translate(-8px, -8px) ;
+    transform: rotate(45deg) translate(-8px, -8px) ;
+}
+.custom-dropdown-menu{
+    font-size: $body-text-14;
+}
+
+.auto-generated-text{
+    font-size:$body-text-15;
+    color:$lighter-text;
+    font-weight: normal;
+}
+/*Custom Radio*/
+/* The container */
+.radioinput-container {
+    display: block;
+    position: relative;
+    padding-left: 35px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: $font-size-base ;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Hide the browser's default radio button */
+.radioinput-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Create a custom radio button */
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 26px;
+    width: 26px;
+    background-color: #fff;
+    border:2px solid $primary-blue;
+    border-radius: 50%;
+}
+
+/* On mouse-over, add a grey background color */
+.radioinput-container:hover input ~ .checkmark {
+    background-color: #fff;
+}
+
+/* When the radio button is checked, add a blue background */
+.radioinput-container input:checked ~ .checkmark {
+    background-color: #2196F3;
+}
+
+/* Create the indicator (the dot/circle - hidden when not checked) */
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+/* Show the indicator (dot/circle) when checked */
+.radioinput-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+/* Style the indicator (dot/circle) */
+.radioinput-container .checkmark:after {
+    top: 1px;
+    left: 1px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: $primary-blue;
+    border: 4px solid #fff;
+}
+/*Custom Radio*/
+
+.team-list{
+    ul{
+        li{
+            padding-left: 50px;
+            position: relative;
+            border-bottom: 1px solid $lighter-text;
+            font-size: $body-text-14;
+            padding-top:10px;
+            padding-bottom:10px;
+            
+            .user-avtaar{
+                position: absolute;
+                left:0;
+                top:12px;
+            }
+        }
+    }
+}

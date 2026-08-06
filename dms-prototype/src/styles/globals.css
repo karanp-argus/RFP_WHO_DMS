@@ -1,0 +1,330 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/* Source Sans Pro — the reference design's typeface (JEE Reporting).
+   Self-hosted so the demo works with no network.
+   NOTE: shadcn's `nova` preset imports @fontsource-variable/geist and repoints
+   --font-sans at it. That import is deliberately absent; see @theme inline. */
+@import '@fontsource/source-sans-pro/300.css';
+@import '@fontsource/source-sans-pro/400.css';
+@import '@fontsource/source-sans-pro/600.css';
+@import '@fontsource/source-sans-pro/700.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ===========================================================================
+   TOKEN ARCHITECTURE
+   ---------------------------------------------------------------------------
+   Two layers, because Tailwind v4 needs both:
+
+   1. RAW VALUES live in `:root` and `.dark` as plain custom properties. These
+      are the only place a hex code may appear.
+   2. `@theme inline` maps them to Tailwind's --color-* / --shadow-* namespace.
+      `inline` makes Tailwind emit `var(--who-x)` into each utility rather than
+      the resolved value, so utilities follow the active theme at runtime.
+
+   Non-colour tokens (type scale, geometry) never flip, so they sit in a plain
+   `@theme` block below.
+
+   CONTENT vs SURFACE
+   ------------------
+   Light values are lifted verbatim from Reference/html_pages/sass/. One thing
+   the reference does not have to solve: $violet-dark (#43425D) is used there
+   BOTH as heading text and as the primary button fill. Those are the same
+   colour in a light theme but must move in OPPOSITE directions in a dark one
+   (text goes light, fill stays a fill). They are therefore split here into
+   --who-heading (content) and --who-brand (surface). Do not merge them back.
+   =========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* -- Content (text, icons) --
+     Three values are darkened from the reference for contrast. Each is a
+     grey→darker-grey move that preserves the design intent; the measured ratios
+     are in the table at the bottom of this file.
+       $light-gray  #A3A6B4 → --who-text-muted #63667A  (was 2.4:1 on white)
+       $icon        #BCBCCB → --who-icon       #878C9F  (was 1.9:1; these are
+                                                         interactive buttons, so
+                                                         WCAG 1.4.11 wants 3:1)
+     --who-hint keeps the reference's #A4AFB7 and is therefore restricted to
+     non-essential hints — never to information a user must read. */
+  --who-heading: #43425d; /* reference $violet-dark */
+  --who-text: #4d4f5c;
+  --who-text-muted: #63667a;
+  --who-hint: #a4afb7; /* 2.2:1 — decorative hints ONLY, never essential text */
+  --who-icon: #878c9f;
+  --who-on-brand: #ffffff; /* text on --who-brand / --who-sidebar */
+
+  /* -- Surfaces -- */
+  --who-page-bg: #f0f0f7;
+  --who-surface: #ffffff; /* cards, header, panels */
+  --who-surface-raised: #ffffff;
+  --who-border: #e9e9f0;
+  --who-scrim: rgb(0 0 0 / 0.4);
+
+  /* -- Brand -- */
+  --who-brand: #43425d; /* primary button fill (reference .secondary-btn) */
+  --who-brand-hover: #3b86ff; /* reference: hover → $primary-blue */
+  --who-primary-blue: #3b86ff; /* 3.5:1 on white — borders/rings/underlines only */
+  --who-accent-subtle: #eef3fc; /* hover + selected tint for menus and list rows */
+
+  /* 4px, matching Bootstrap 5's .25rem in the reference — not shadcn's 10px. */
+  --radius: 0.25rem;
+
+  /* -- Sidebar: a coloured surface in BOTH themes, so it owns its own scale -- */
+  --who-sidebar: #4d7ac4;
+  --who-sidebar-hover: #4269a8;
+  --who-sidebar-accent: #3c3b54; /* 4px active left-border */
+  --who-sidebar-logo: #446daf;
+
+  /* -- Workbook cell semantics --
+     Carried over from the legacy DMS screenshots: blue rows are country-reported
+     values, pink rows are calculated indicators. UC031 also requires formula
+     cells to render in a different colour + italic. */
+  --who-cell-value: #dce6f4;
+  --who-cell-indicator: #f4dcdc;
+  --who-cell-formula: #1a5fd0;
+
+  /* -- Status -- */
+  --who-pass: #2e7d5b;
+  --who-warn: #9c6415; /* darkened from #B7791F, which was 3.6:1 on white */
+  --who-fail: #c0392b;
+
+  /* -- Elevation -- */
+  --who-shadow-card: 4px 4px 11px #dedee2;
+  --who-shadow-header: 0 2px 4px rgb(0 0 0 / 0.4);
+}
+
+/* ---------------------------------------------------------------------------
+   DARK THEME
+   The reference (JEE Reporting) is light-only, so these values are designed
+   rather than lifted. Two rules held throughout:
+     · Hue is preserved. The sidebar stays recognisably WHO blue (hue 217°),
+       deepened rather than neutralised, so brand identity survives.
+     · Semantics are preserved. Blue still means reported, pink/red still means
+       calculated, so the workbook colour coding the HA team already knows
+       reads the same way in both themes.
+   --------------------------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+
+  /* -- Content -- */
+  --who-heading: #e6e7f0;
+  --who-text: #c9cbd6;
+  --who-text-muted: #9ba0b0;
+  --who-hint: #7c8398;
+  --who-icon: #7c8195;
+  --who-on-brand: #ffffff;
+
+  /* -- Surfaces: canvas darkest, panels raised above it -- */
+  --who-page-bg: #14161f;
+  --who-surface: #1e2130;
+  --who-surface-raised: #252939;
+  --who-border: #2f3345;
+  --who-scrim: rgb(0 0 0 / 0.6);
+
+  /* -- Brand: the fill lightens so white text still clears AA -- */
+  --who-brand: #5c5a85;
+  --who-brand-hover: #6ba5ff;
+  --who-primary-blue: #6ba5ff; /* lifted from #3B86FF for contrast on dark */
+  --who-accent-subtle: #2a3348;
+
+  /* -- Sidebar: hue 217° held, lightness dropped from 54% to ~22% -- */
+  --who-sidebar: #203350;
+  --who-sidebar-hover: #2a4265;
+  --who-sidebar-accent: #6ea8ff; /* inverts: must now be LIGHTER than the bar */
+  --who-sidebar-logo: #1a2b45;
+
+  /* -- Workbook cells: same semantics, dark tints -- */
+  --who-cell-value: #1b2a40;
+  --who-cell-indicator: #3a222a;
+  --who-cell-formula: #7fb0ff;
+
+  /* -- Status: lightened for contrast on dark surfaces -- */
+  --who-pass: #4fbf8b;
+  --who-warn: #e0a94a;
+  --who-fail: #f0705f;
+
+  /* -- Elevation: soft shadows vanish on dark, so go darker and tighter -- */
+  --who-shadow-card: 0 2px 10px rgb(0 0 0 / 0.5);
+  --who-shadow-header: 0 2px 6px rgb(0 0 0 / 0.6);
+}
+
+/* Colour tokens → Tailwind utilities. `inline` keeps them as var() so they
+   follow the active theme. */
+@theme inline {
+  --color-who-heading: var(--who-heading);
+  --color-who-text: var(--who-text);
+  --color-who-text-muted: var(--who-text-muted);
+  --color-who-hint: var(--who-hint);
+  --color-who-icon: var(--who-icon);
+  --color-who-on-brand: var(--who-on-brand);
+
+  --color-who-page-bg: var(--who-page-bg);
+  --color-who-surface: var(--who-surface);
+  --color-who-surface-raised: var(--who-surface-raised);
+  --color-who-border: var(--who-border);
+  --color-who-scrim: var(--who-scrim);
+
+  --color-who-brand: var(--who-brand);
+  --color-who-brand-hover: var(--who-brand-hover);
+  --color-who-primary-blue: var(--who-primary-blue);
+
+  --color-who-sidebar: var(--who-sidebar);
+  --color-who-sidebar-hover: var(--who-sidebar-hover);
+  --color-who-sidebar-accent: var(--who-sidebar-accent);
+  --color-who-sidebar-logo: var(--who-sidebar-logo);
+
+  --color-who-cell-value: var(--who-cell-value);
+  --color-who-cell-indicator: var(--who-cell-indicator);
+  --color-who-cell-formula: var(--who-cell-formula);
+
+  --color-who-pass: var(--who-pass);
+  --color-who-warn: var(--who-warn);
+  --color-who-fail: var(--who-fail);
+
+  --shadow-who-card: var(--who-shadow-card);
+  --shadow-who-header: var(--who-shadow-header);
+}
+
+/* Theme-invariant tokens: type scale and layout geometry. */
+@theme {
+  --text-h1: 2.5rem; /* 40 */
+  --text-h2: 2.25rem; /* 36 */
+  --text-h3: 1.875rem; /* 30 */
+  --text-h4: 1.5rem; /* 24 */
+  --text-h5: 1.25rem; /* 20 */
+  --text-page-title: 1.75rem; /* 28 — .content h2 override in _layout.scss */
+  --text-body-lg: 1.125rem; /* 18 */
+  --text-body: 0.9375rem; /* 15 */
+  --text-body-sm: 0.875rem; /* 14 */
+  --text-meta: 0.75rem; /* 12 — uppercase table headers */
+  --text-micro: 0.625rem; /* 10 */
+
+  --spacing-sidebar: 260px;
+  --spacing-header: 70px;
+  --spacing-content-left: 300px;
+  --spacing-content-top: 110px;
+}
+
+/* The reference collapses the sidebar at 767px. Tailwind's `md` is 768px,
+   so md: maps onto the reference breakpoint exactly. */
+
+/* ===========================================================================
+   shadcn/ui semantic mapping.
+   All 28 generated components read these, so mapping them onto the WHO tokens
+   once means every component is themed in BOTH modes with no per-component
+   overrides. Because the right-hand sides are var()s that flip in `.dark`,
+   these need declaring only once.
+   =========================================================================== */
+@theme inline {
+  --font-sans: 'Source Sans Pro', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+
+  --color-background: var(--who-surface);
+  --color-foreground: var(--who-text);
+  --color-card: var(--who-surface);
+  --color-card-foreground: var(--who-text);
+  --color-popover: var(--who-surface-raised);
+  --color-popover-foreground: var(--who-text);
+  --color-primary: var(--who-brand);
+  --color-primary-foreground: var(--who-on-brand);
+  --color-secondary: var(--who-page-bg);
+  --color-secondary-foreground: var(--who-heading);
+  --color-muted: var(--who-page-bg);
+  --color-muted-foreground: var(--who-text-muted);
+  --color-accent: var(--who-accent-subtle);
+  --color-accent-foreground: var(--who-heading);
+  --color-destructive: var(--who-fail);
+  --color-border: var(--who-border);
+  --color-input: var(--who-border);
+  --color-ring: var(--who-primary-blue);
+
+  --color-chart-1: var(--who-sidebar);
+  --color-chart-2: var(--who-primary-blue);
+  --color-chart-3: var(--who-brand);
+  --color-chart-4: var(--who-pass);
+  --color-chart-5: var(--who-warn);
+
+  --color-sidebar: var(--who-sidebar);
+  --color-sidebar-foreground: var(--who-on-brand);
+  --color-sidebar-primary: var(--who-sidebar-hover);
+  --color-sidebar-primary-foreground: var(--who-on-brand);
+  --color-sidebar-accent: var(--who-sidebar-hover);
+  --color-sidebar-accent-foreground: var(--who-on-brand);
+  --color-sidebar-border: var(--who-sidebar-logo);
+  --color-sidebar-ring: var(--who-primary-blue);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ===========================================================================
+   CONTRAST AUDIT (WCAG 2.1)
+   Measured against the live computed values; re-run after any token change.
+   Dark theme passes every pair at AA. Light theme has three known shortfalls,
+   all inherited from the WHO reference palette and all deliberately left alone
+   — changing them would alter WHO brand colours, which is not ours to decide:
+
+     4.29:1  sidebar label (#FFF on $blue-bg #4D7AC4)
+             0.21 short of AA for 15px text. Fixed by either a marginally darker
+             blue or larger/heavier label text. Flag to WHO; do not guess.
+     3.48:1  --who-primary-blue on white
+             PASSES the 3:1 bar for UI components (borders, focus rings, active
+             underlines), which is all it is used for. It must NOT be used for
+             body text on a light surface.
+     2.52:1  --who-sidebar-accent on --who-sidebar
+             The 4px active indicator. Decorative: the row background also
+             changes on active, so colour is never the sole state signal.
+
+   Everything else clears AA (4.5:1) in both themes, including the workbook cell
+   semantics: formula text on a value cell is 4.6:1 light / 6.6:1 dark.
+   =========================================================================== */
+
+/* ===========================================================================
+   STACKING ORDER
+   Radix renders every overlay (dropdown, popover, tooltip, select, dialog,
+   sheet, command) into a portal on document.body at z-50. Those portals are
+   siblings of the app chrome, so ALL fixed chrome must sit BELOW 50 or it will
+   paint over the top of open menus.
+
+     z-20  header        (fixed, full width minus sidebar)
+     z-30  mobile scrim  (covers content AND header, so the page recedes)
+     z-40  sidebar       (above the scrim when open as a drawer)
+     z-50  Radix portals (shadcn default — never edit the generated components)
+
+   Do not raise chrome above z-40, and do not lower a shadcn overlay. If a new
+   layer is needed, fit it into the gaps.
+   =========================================================================== */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-size: 16px;
+    @apply font-sans;
+  }
+
+  /* Page canvas. Declared after shadcn's base so it wins over bg-background. */
+  body {
+    background: var(--who-page-bg);
+    color: var(--who-text);
+    font-size: var(--text-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Visible focus on the WHO accent, for the Phase 8 accessibility pass. */
+  :focus-visible {
+    outline: 2px solid var(--who-primary-blue);
+    outline-offset: 2px;
+  }
+}
