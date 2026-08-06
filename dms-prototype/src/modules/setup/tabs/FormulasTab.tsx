@@ -1,21 +1,38 @@
 /**
  * Formulas (UC029 predefined, UC030 custom, UC060 legacy).
  *
- * This tab is where the Phase 3 engine becomes visible, so three things the RFP
+ * This tab is where the Phase 3 engine becomes visible, so four things the RFP
  * is specific about are surfaced rather than buried:
  *
+ *  · **Every formula is evaluated live** against a chosen country and year, so
+ *    the 16 seeded indicators are numbers on screen rather than text. Values
+ *    come from `useFormulaEngine`, which resolves through `XMartClient`.
  *  · **The null-guard condition** is shown on every formula. "at least one
  *    component not null" and "CHE and GDP not null" behave differently, and a
- *    failed guard yields blank rather than 0 — which shows up in exports.
+ *    failed guard yields blank rather than 0 — which shows up in exports, and
+ *    is rendered here as a blank with a reason rather than a zero.
  *  · **Per-country overrides** (UC029): "editing/customizing a predefined formula
  *    for a specific country, so that the formula would not be altered for other
  *    countries, but only for the impacted one."
  *  · **Legacy old-DMS formulas** (UC060) are listed read-only in their original
  *    syntax, so the migration gap is explicit rather than glossed over.
+ *
+ * The inspector and the dependency-graph dialog exist because plan §Phase 3
+ * asks for the AST and the graph to be visible in the demo — a claim about
+ * engineering depth that a screenshot of a table cannot make.
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, FlaskConical, Globe2, Info, Plus } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FlaskConical,
+  Globe2,
+  Info,
+  Network,
+  Plus,
+  Search,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,12 +58,34 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { LoadingState } from '@/components/common/EmptyState'
 import { CountryPicker } from '@/components/common/CountryPicker'
 import { downloadCsv } from '@/lib/exporters'
-import { UNITS } from '@/domain/constants'
+import { formatValue } from '@/lib/format'
+import { UNITS, YEARS } from '@/domain/constants'
+import {
+  FUNCTION_NAMES,
+  formatCycle,
+  formatNode,
+  type EvaluationResult,
+  type FormulaEngine,
+  type ValidationResult,
+} from '@/domain/formula'
 import type { Formula, NullPolicy } from '@/domain/types'
 import { COUNTRY_BY_ISO3 } from '@/data/seed/countries'
 import { useFormulas } from '@/hooks/useSetupData'
+import { useFormulaEngine } from '@/hooks/useFormulaEngine'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
+import { DependencyGraphDialog } from '../DependencyGraphDialog'
+import { FormulaInspectorDialog } from '../FormulaInspectorDialog'
+
+/**
+ * The country-year the tab evaluates against on arrival.
+ *
+ * Canada is the §6 demo walkthrough subject; 2022 rather than 2024 because it
+ * is the most recent year a real reporting round would be complete for, which
+ * is how the HA team would open this screen.
+ */
+const DEFAULT_EVAL_ISO3 = 'CAN'
+const DEFAULT_EVAL_YEAR = 2022
 
 export function FormulasTab() {
   const { data: formulas, isLoading } = useFormulas()
@@ -57,6 +96,12 @@ export function FormulasTab() {
   const [local, setLocal] = useState<Formula[]>([])
   const [overrides, setOverrides] = useState<Record<string, Record<string, string>>>({})
 
+  // The country-year every formula on screen is evaluated against.
+  const [evalCountries, setEvalCountries] = useState<string[]>([DEFAULT_EVAL_ISO3])
+  const [evalYear, setEvalYear] = useState(DEFAULT_EVAL_YEAR)
+  const [graphOpen, setGraphOpen] = useState(false)
+  const evalIso3 = evalCountries[0] ?? DEFAULT_EVAL_ISO3
+
   const all = useMemo(() => {
     const base = [...(formulas ?? []), ...local]
     return base.map((f) => {
@@ -64,6 +109,10 @@ export function FormulasTab() {
       return extra ? { ...f, countryOverrides: { ...f.countryOverrides, ...extra } } : f
     })
   }, [formulas, local, overrides])
+
+  // Fed the on-screen list rather than only what xMart has committed, so an
+  // unsaved draft or a fresh UC029 override is reflected in the values at once.
+  const { engine, isLoading: engineLoading } = useFormulaEngine(evalIso3, all)
 
   const active = all.filter((f) => !f.isLegacy)
   const legacy = all.filter((f) => f.isLegacy)
@@ -162,6 +211,16 @@ export function FormulasTab() {
             </p>
           </div>
 
+          <EvaluationBar
+            countries={evalCountries}
+            onCountriesChange={setEvalCountries}
+            year={evalYear}
+            onYearChange={setEvalYear}
+            engine={engine}
+            isLoading={engineLoading}
+            onOpenGraph={() => setGraphOpen(true)}
+          />
+
           <div className="space-y-5">
             {byFolder.map(([folder, list]) => (
               <section key={folder}>
@@ -175,6 +234,9 @@ export function FormulasTab() {
                       formula={f}
                       isLast={i === list.length - 1}
                       editable={canEdit('setup')}
+                      engine={engine}
+                      iso3={evalIso3}
+                      year={evalYear}
                       onEdit={() => {
                         setEditing(f)
                         setEditorOpen(true)
@@ -199,10 +261,13 @@ export function FormulasTab() {
         <LegacyFormulas formulas={legacy} />
       )}
 
+      <DependencyGraphDialog open={graphOpen} onOpenChange={setGraphOpen} engine={engine} />
+
       <FormulaEditorDialog
         open={editorOpen}
         onOpenChange={setEditorOpen}
         initial={editing}
+        engine={engine}
         canCreatePredefined={canCreatePredefined('setup')}
         authorId={user?.id ?? 'unknown'}
         onSave={(f) => {
@@ -224,6 +289,87 @@ export function FormulasTab() {
 }
 
 /* --------------------------------------------------------------------------
+   Evaluation context — which country-year the numbers on this screen describe
+   -------------------------------------------------------------------------- */
+
+function EvaluationBar({
+  countries,
+  onCountriesChange,
+  year,
+  onYearChange,
+  engine,
+  isLoading,
+  onOpenGraph,
+}: {
+  countries: string[]
+  onCountriesChange: (iso3s: string[]) => void
+  year: number
+  onYearChange: (year: number) => void
+  engine: FormulaEngine | null
+  isLoading: boolean
+  onOpenGraph: () => void
+}) {
+  const cycleCount = engine?.cycles.length ?? 0
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 rounded border border-who-border bg-who-surface px-4 py-3">
+      <div className="min-w-[220px]">
+        <Label className="text-[length:var(--text-meta)]">Evaluate for</Label>
+        <div className="mt-1">
+          <CountryPicker selected={countries} onChange={onCountriesChange} max={1} />
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="eval-year" className="text-[length:var(--text-meta)]">
+          Year
+        </Label>
+        <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+          <SelectTrigger id="eval-year" className="mt-1 w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[...YEARS].reverse().map((y) => (
+              <SelectItem key={y} value={String(y)}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="ml-auto flex items-center gap-2">
+        {isLoading ? (
+          <span className="text-[length:var(--text-meta)] text-who-text-muted">
+            Resolving values from xMart…
+          </span>
+        ) : (
+          <span
+            className={cn(
+              'flex items-center gap-1 text-[length:var(--text-meta)]',
+              cycleCount > 0 ? 'text-who-fail' : 'text-who-text-muted',
+            )}
+          >
+            {cycleCount > 0 ? (
+              <AlertTriangle className="size-3.5" aria-hidden />
+            ) : (
+              <CheckCircle2 className="size-3.5 text-who-pass" aria-hidden />
+            )}
+            {cycleCount > 0
+              ? `${cycleCount} circular reference${cycleCount === 1 ? '' : 's'}`
+              : `${engine?.order.length ?? 0} formulas, no cycles`}
+          </span>
+        )}
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={onOpenGraph}>
+          <Network className="size-3.5" />
+          Dependency graph
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* --------------------------------------------------------------------------
    One formula row
    -------------------------------------------------------------------------- */
 
@@ -231,17 +377,31 @@ function FormulaRow({
   formula: f,
   isLast,
   editable,
+  engine,
+  iso3,
+  year,
   onEdit,
   onOverride,
 }: {
   formula: Formula
   isLast: boolean
   editable: boolean
+  engine: FormulaEngine | null
+  iso3: string
+  year: number
   onEdit: () => void
   onOverride: (iso3: string, expression: string) => void
 }) {
   const [overrideOpen, setOverrideOpen] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const overrideCount = Object.keys(f.countryOverrides).length
+
+  // Memoised on the engine identity: the engine caches internally, so this is
+  // cheap, but re-running it on every keystroke elsewhere on the tab is not.
+  const result: EvaluationResult | null = useMemo(
+    () => engine?.evaluate(f.code, iso3, year) ?? null,
+    [engine, f.code, iso3, year],
+  )
 
   return (
     <div
@@ -299,26 +459,84 @@ function FormulaRow({
         </p>
       </div>
 
-      {editable ? (
-        <div className="flex shrink-0 gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => setOverrideOpen(true)}>
-            Customise per country
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onEdit}>
-            Edit
-          </Button>
-        </div>
-      ) : null}
+      <ValueCell formula={f} result={result} />
+
+      <div className="flex shrink-0 gap-1.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          disabled={result == null}
+          onClick={() => setInspectorOpen(true)}
+        >
+          <Search className="size-3.5" />
+          Inspect
+        </Button>
+        {editable ? (
+          <>
+            <Button variant="outline" size="sm" onClick={() => setOverrideOpen(true)}>
+              Customise per country
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onEdit}>
+              Edit
+            </Button>
+          </>
+        ) : null}
+      </div>
+
+      <FormulaInspectorDialog
+        open={inspectorOpen}
+        onOpenChange={setInspectorOpen}
+        formula={f}
+        result={result}
+        countryLabel={COUNTRY_BY_ISO3.get(iso3)?.NAME_SHORT_EN ?? iso3}
+        year={year}
+      />
 
       <CountryOverrideDialog
         open={overrideOpen}
         onOpenChange={setOverrideOpen}
         formula={f}
-        onSave={(iso3, expr) => {
-          onOverride(iso3, expr)
+        onSave={(overrideIso3, expr) => {
+          onOverride(overrideIso3, expr)
           setOverrideOpen(false)
         }}
       />
+    </div>
+  )
+}
+
+/**
+ * The computed value.
+ *
+ * A failed guard renders as a dash with the word "blank" beside it, never as 0
+ * — the whole point of `NullPolicy`, and the thing that would be quietly undone
+ * here by a `?? 0`.
+ */
+function ValueCell({ formula, result }: { formula: Formula; result: EvaluationResult | null }) {
+  if (result == null) {
+    return <div className="w-32 shrink-0 text-right text-who-text-muted">…</div>
+  }
+
+  return (
+    <div className="w-32 shrink-0 text-right">
+      <p
+        className={cn(
+          'font-mono text-[length:var(--text-body)] font-semibold tabular-nums',
+          result.blank ? 'text-who-text-muted' : 'text-who-heading',
+        )}
+      >
+        {formatValue(result.value, formula.unit)}
+      </p>
+      {result.error ? (
+        <p className="text-[length:var(--text-meta)] text-who-fail">{result.error.kind}</p>
+      ) : result.guard === 'failed' ? (
+        <p className="text-[length:var(--text-meta)] text-who-warn">blank — guard failed</p>
+      ) : (
+        <p className="text-[length:var(--text-meta)] text-who-text-muted">
+          {formula.unit === UNITS.PERCENT ? '%' : formula.unit}
+        </p>
+      )}
     </div>
   )
 }
@@ -484,6 +702,7 @@ function FormulaEditorDialog({
   open,
   onOpenChange,
   initial,
+  engine,
   canCreatePredefined,
   authorId,
   onSave,
@@ -491,6 +710,7 @@ function FormulaEditorDialog({
   open: boolean
   onOpenChange: (o: boolean) => void
   initial: Formula | null
+  engine: FormulaEngine | null
   canCreatePredefined: boolean
   authorId: string
   onSave: (f: Formula) => void
@@ -518,11 +738,25 @@ function FormulaEditorDialog({
     setCountries(initial?.countryScope ?? [])
   }, [open, initial, canCreatePredefined])
 
+  /**
+   * Live validation against the real engine: syntax, unknown references, and
+   * — the one that matters — whether saving this expression would close a
+   * cycle. UC029/UC030 let an administrator edit formulas freely, so the
+   * circular-reference check has to happen here, before the save, rather than
+   * as an error the workbook discovers later.
+   */
+  const check = useMemo(() => {
+    const trimmed = expression.trim()
+    if (!engine || trimmed === '') return null
+    return engine.validate(trimmed, { code: code.trim() || undefined })
+  }, [engine, expression, code])
+
   const valid =
     code.trim() !== '' &&
     name.trim() !== '' &&
     expression.trim() !== '' &&
-    (scope === 'predefined' || countries.length > 0)
+    (scope === 'predefined' || countries.length > 0) &&
+    (check?.ok ?? true)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -591,9 +825,7 @@ function FormulaEditorDialog({
               placeholder="HF.3 / CHE * 100"
               className="mt-1 h-9 font-mono"
             />
-            <p className="mt-1 text-[length:var(--text-meta)] text-who-text-muted">
-              Validated and evaluated by the formula engine in Phase 3.
-            </p>
+            <ExpressionFeedback check={check} />
           </div>
 
           <div>
@@ -677,5 +909,60 @@ function FormulaEditorDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * What the engine makes of what has been typed so far.
+ *
+ * Three outcomes, in the order they can occur: the parser could not read it;
+ * it parsed but names codes that do not exist; it parses and resolves but would
+ * create a circular reference. Only the last needs the cycle path spelled out,
+ * because it is the one an administrator cannot diagnose by re-reading the text.
+ */
+function ExpressionFeedback({ check }: { check: ValidationResult | null }) {
+  if (!check) {
+    return (
+      <p className="mt-1 text-[length:var(--text-meta)] text-who-text-muted">
+        Reference variables and other formulas by code. Functions: {FUNCTION_NAMES.join(', ')}.
+      </p>
+    )
+  }
+
+  if (check.error && !check.cycle) {
+    return (
+      <p className="mt-1 flex items-start gap-1.5 text-[length:var(--text-meta)] text-who-fail">
+        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        {check.error.message}
+      </p>
+    )
+  }
+
+  if (check.cycle) {
+    return (
+      <p className="mt-1 flex items-start gap-1.5 text-[length:var(--text-meta)] text-who-fail">
+        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        Circular reference: <span className="font-mono">{formatCycle(check.cycle)}</span>. A
+        formula cannot depend on itself, directly or through another formula.
+      </p>
+    )
+  }
+
+  if (check.unknownCodes.length > 0) {
+    return (
+      <p className="mt-1 flex items-start gap-1.5 text-[length:var(--text-meta)] text-who-warn">
+        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        Unknown code{check.unknownCodes.length === 1 ? '' : 's'}:{' '}
+        <span className="font-mono">{check.unknownCodes.join(', ')}</span>
+      </p>
+    )
+  }
+
+  return (
+    <p className="mt-1 flex items-start gap-1.5 text-[length:var(--text-meta)] text-who-pass">
+      <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      Parses cleanly —{' '}
+      <span className="font-mono">{check.ast ? formatNode(check.ast) : ''}</span>
+    </p>
   )
 }

@@ -14,6 +14,16 @@
  * `Population` and `Ex. rate` in the FR's expressions map to the MACRO series
  * `POP` and `EXR` respectively; the expressions below use the MACRO codes so
  * they resolve against real variables.
+ *
+ * **The three per-capita expressions carry an explicit `* 1000000`, and the FR
+ * table does not.** Expenditure here is in NCU *millions* (the unit the FR
+ * itself gives them) while `POP` is a count of people, so the FR's literal
+ * `CHE / Population / Ex. rate` produced **US$ 0.0079 per capita for Canada** —
+ * off by exactly the million. The legacy DMS presumably holds population on a
+ * matching scale; ours does not, and Phase 1 locked persons into the generator
+ * and its tests. Writing the conversion into the expression rather than hiding
+ * it in the evaluator keeps it visible on the Formulas tab, where an evaluator
+ * can see the assumption and challenge it. Asserted in `phase3.test.ts`.
  */
 
 import { UNITS } from '@/domain/constants'
@@ -56,7 +66,7 @@ const ROWS: Row[] = [
     name: 'Current Health Expenditure (CHE) per Capita in US$',
     code: 'CHE_pc_US$_SHA2011',
     shortCode: 'che_pc_usd',
-    expression: 'CHE / POP / EXR',
+    expression: 'CHE * 1000000 / POP / EXR',
     nullPolicy: 'all-not-null',
     conditionLabel: 'CHE and Population and Ex. Rate not null',
     unit: UNITS.USD_PER_CAPITA,
@@ -178,7 +188,7 @@ const ROWS: Row[] = [
     name: 'Domestic General Government Health Expenditure (GGHE-D) per Capita in US$',
     code: 'GGHE-D_pc_US$_SHA2011',
     shortCode: 'gghed_pc_usd',
-    expression: 'GGHE-D / POP / EXR',
+    expression: 'GGHE-D * 1000000 / POP / EXR',
     nullPolicy: 'all-not-null',
     conditionLabel: 'GGHE-D and Population and Ex. Rate not null',
     unit: UNITS.USD_PER_CAPITA,
@@ -188,7 +198,7 @@ const ROWS: Row[] = [
     name: 'Domestic Private Health Expenditure (PVT-D) per Capita in US$',
     code: 'PVT-D_pc_US$_SHA2011',
     shortCode: 'pvtd_pc_usd',
-    expression: 'PVT-D / POP / EXR',
+    expression: 'PVT-D * 1000000 / POP / EXR',
     nullPolicy: 'all-not-null',
     conditionLabel: 'PVT-D and Population and Ex. Rate not null',
     unit: UNITS.USD_PER_CAPITA,

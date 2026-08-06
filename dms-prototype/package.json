@@ -13,6 +13,7 @@
     "typecheck": "tsc -b",
     "verify:theme": "node scripts/verify-theme.mjs",
     "verify:setup": "node scripts/verify-setup.mjs",
+    "verify:formulas": "node scripts/verify-formulas.mjs",
     "verify:zindex": "node scripts/verify-zindex.mjs",
     "verify:shell": "node scripts/verify-shell.mjs"
   },
