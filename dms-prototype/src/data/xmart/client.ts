@@ -11,6 +11,7 @@
  * interchangeable.
  */
 
+import type { SyncStatus } from '@/domain/integration'
 import type {
   Classification,
   Country,
@@ -100,6 +101,54 @@ export interface PutResult {
 }
 
 /* ==========================================================================
+   DATASET-LEVEL RESTORE (UC044)
+   ========================================================================== */
+
+/**
+ * One observation that stood at a different value on a past date.
+ *
+ * UC044's last clause — *"an administrator can restore a whole dataset as of a
+ * date"* — is a bulk as-of query, not a loop over the per-observation restore
+ * the workbook already offers. Doing it per key would be thousands of round
+ * trips against a real warehouse, so the interface exposes the shape the
+ * operation actually needs.
+ */
+export interface DatasetAsOfChange {
+  observationKey: string
+  iso3: string
+  year: number
+  /** Variable or cross code, for the preview table. */
+  code: string
+  currentValue: number | null
+  asOfValue: number | null
+  /** Commit stamp of the version that was current on the as-of date. */
+  asOfCommitDateUtc: string
+  asOfAuthor: string
+}
+
+export interface DatasetAsOfResult {
+  asOfUtc: string
+  /** Observations examined. */
+  scanned: number
+  /** Of those, how many carry any version history at all. */
+  withHistory: number
+  /** Only the ones whose as-of value differs from the current one. */
+  changes: readonly DatasetAsOfChange[]
+  /** True when the scan hit its budget before finishing the requested slice. */
+  truncated: boolean
+}
+
+/**
+ * Ceiling on a single as-of scan.
+ *
+ * Every observation in the slice needs its version history rebuilt, which is
+ * an order of magnitude more work per row than a plain read. A whole-corpus
+ * restore is a warehouse-side job, not something a browser should attempt, and
+ * reporting the truncation is more honest than quietly stopping.
+ */
+export const DATASET_AS_OF_MAX_SCAN = 60_000
+
+/* ==========================================================================
    THE INTERFACE
    ========================================================================== */
 
@@ -131,6 +180,11 @@ export interface XMartClient {
   getVersionsBulk(
     observationKeys: readonly string[],
   ): Promise<ReadonlyMap<string, readonly ObservationVersion[]>>
+  /**
+   * UC044 — what a slice looked like on a past date, and what would change if
+   * it were restored. Read-only: applying the result is a `putObservations`.
+   */
+  getDatasetAsOf(query: ObservationQuery, asOfUtc: string): Promise<DatasetAsOfResult>
   /** UC046 — push DMS edits back to the warehouse. */
   putObservations(changes: readonly ObservationChange[]): Promise<PutResult>
 
@@ -139,6 +193,8 @@ export interface XMartClient {
   getImportBatches(countries?: readonly string[]): Promise<readonly ImportBatch[]>
   /** UC023 — logged communications with countries. */
   getReportingContacts(): Promise<readonly ReportingContact[]>
+  /** UC045/UC056 — per-source load status for the integration page. */
+  getSyncStatus(): Promise<readonly SyncStatus[]>
   /** Users are managed in Entra ID; DMS reads and updates its own role mapping. */
   getUsers(): Promise<readonly DmsUser[]>
 }

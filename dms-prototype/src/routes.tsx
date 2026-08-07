@@ -144,12 +144,15 @@ export const ROUTES: RouteDef[] = [
     nav: true,
   },
   {
+    // Not `adminOnly`: UC007 keeps view access on every module for a regular
+    // user, and seeing the matrix that governs your own access is exactly the
+    // sort of thing it protects. Only the Edit button is administrator-gated,
+    // and the page handles that itself.
     path: '/users/role-permissions',
     label: 'Role Permissions',
     module: 'users',
     Component: RolePermissionsPage,
     nav: false,
-    adminOnly: true,
   },
   {
     path: '/notifications',

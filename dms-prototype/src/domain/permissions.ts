@@ -10,8 +10,9 @@
  *   No Access | View | Edit | Edit Selected Countries | Country Customized |
  *   Create Predefined
  *
- * Phase 7 builds the editable matrix (UC008). Until then the defaults below
- * are the ones the FR specifies for regular users.
+ * The defaults below are the ones the FR specifies for regular users. Phase 7
+ * makes them editable — see `domain/users/matrix.ts` for which levels apply to
+ * which module and why, and `RolePermissionsPage` for the editor.
  */
 
 export const ROLES = ['administrator', 'regular'] as const
@@ -73,7 +74,11 @@ export const DEFAULT_REGULAR_PERMISSIONS: PermissionMatrix = {
 }
 
 export const ADMIN_PERMISSIONS: PermissionMatrix = {
-  home: 'create-predefined',
+  // View, not create-predefined: nothing on Home is authored, so any level
+  // above View would be state nothing reads. `domain/users/matrix.ts` offers
+  // only View for this module and validates against it, and an administrator
+  // matrix that failed its own validator would be the wrong thing to ship.
+  home: 'view',
   users: 'create-predefined',
   setup: 'create-predefined',
   workbooks: 'edit',

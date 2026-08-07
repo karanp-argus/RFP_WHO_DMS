@@ -96,6 +96,15 @@ export function useImportBatches(countries: readonly string[]) {
   })
 }
 
+/** UC045/UC056 — per-source load status for the integration page. */
+export function useSyncStatus() {
+  return useQuery({
+    queryKey: ['xmart', 'sync-status'],
+    queryFn: () => mockXMartClient.getSyncStatus(),
+    staleTime: CONFIG_STALE_MS,
+  })
+}
+
 export function useUsers() {
   return useQuery({
     queryKey: ['xmart', 'users'],

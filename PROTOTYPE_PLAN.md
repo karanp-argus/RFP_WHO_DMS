@@ -818,7 +818,108 @@ already was.
 5. **`RetrievalApiPage` (Annex 3):** the request builder from §1.7 — country, year range, `modifiedSince`, `includeDeleted`, `page`, `pageSize` (default 100,000) — showing the generated URL, an OAuth 2.0 bearer-token placeholder, response headers with paging metadata, and a downloadable CSV carrying `Sys_ID` and `Sys_CommitDateUtc`. **Walk the evaluator down the Annex 3 mandatory list on this one screen.**
 6. **Notifications panel:** ~~header bell with an unread count, panel listing job completions, `NotificationsPage` list view~~ — **built in Phase 6**, because UC042's job-completion notification needs somewhere to arrive. What remains here is the module proper: reporting due dates as a second sender, and **UC058/UC059** — subscribing to events and configuring what raises a notification.
 
-**Done when:** the permission matrix visibly changes what a regular user can do, and the Retrieval API page answers every mandatory Annex 3 row on screen. → **UC004, 005, 007, 012, 045, 046, 056** (+ 003.1, 008, 010, 011, partial 058).
+**Done when:** the permission matrix visibly changes what a regular user can do, and the Retrieval API page answers every mandatory Annex 3 row on screen. → **UC004, 005, 007, 012, 045, 046, 056** (+ 003.1, 008, 010, 011, 058, 059).
+
+**Outcome (built, verified, committed).** Four new pure domain areas, all tested:
+`domain/users/` (the UC005/007/009/010/011/012 rules and the UC008 matrix),
+`domain/notify/` (the event catalogue, subscription matching and the UC023 due-date
+sender), `domain/integration/` (the Annex 3 checklist, request builder and To-Be
+architecture) and `domain/home/` (the dashboard metrics). Above them: a real Users list
+with inline role and active controls, the grant-access and edit-access dialogs, the UC008
+matrix with a live capability preview, the Home dashboard with a completeness heatmap, the
+integration module in three tabs, the Annex 3 simulator, the notifications module, and the
+Dev drawer the header button has been toggling since Phase 0. **411 passing tests** (88 new
+domain tests, 24 new corpus tests) and a **92-check browser harness**
+(`npm run verify:phase7`). Both acceptance criteria are asserted: the harness flips Reports
+to *View*, switches role, and checks the New-report button is gone **and** the module is
+still viewable; and it reads the downloaded Annex 3 CSV off disk to confirm `Sys_ID` and
+`Sys_CommitDateUtc` are really in it.
+
+**The last-administrator guard closes two doors, not one.** UC010's *"there will always be
+a minimum of one enabled Administrator"* is usually read as a rule about the disable
+switch. Demoting the last administrator to Regular User empties the role just as
+completely, and a role select is the control somebody reaches for without thinking of it as
+a disable. `applyUserChange` refuses both, with the same message naming the fix — grant or
+enable another administrator first. Refusals are returned as sentences the dialog shows
+verbatim, because "Save failed" tells an administrator nothing and the correct next action
+is already in the domain's own message.
+
+**There is no `deleteUser` anywhere, and the absence is structural.** UC012 disables rather
+than deletes so log references survive, and every observation's `Sys_FirstLoadUser`, every
+version's author and every rule's `createdBy` is a plain email pointing into this
+directory. A disabled delete button is a rule one refactor away from being lost; a domain
+module with no such function is a rule the next screen cannot break by accident. The
+harness asserts the negative — no delete button, no delete menu item.
+
+**`No Access` is never offered, and the matrix is filtered per module.** UC008 enumerates
+six levels; UC007 guarantees a regular user view and export on *every* module, so a matrix
+able to express "no access" can express something the FR forbids. The editor omits it and
+`matrixProblems` reports it if persisted state ever contains it. The per-module filtering
+is the same argument one level down: "Edit Selected Countries" on the Users module is not a
+stricter permission, it is a meaningless one — user administration has no country axis — and
+offering it invites an administrator to set a value nothing reads. One consequence reached
+back into Phase 0: `ADMIN_PERMISSIONS.home` was `create-predefined`, which nothing read and
+which failed the module's own validator, and is now `view`.
+
+**The dashboard's completeness grid counts a null as unreported — the only place in the app
+that does.** Everywhere else an observation with metadata and no figure is a first-class
+record; the FR insists on it and the formula engine's null guards depend on it. But the
+question this grid answers is *"is there a number in this series"*, and an observation that
+exists to say no figure was available is an honest answer to a different question. It is
+also why `expected` is a parameter rather than derived from the rows returned: derived, a
+country with no data at all scores 0/0 and reads as complete. The grid measures the eleven
+reported **HF leaves**, not `HF.1`–`HF.4`, because the parents are `isCalculated` and
+scoring a country on arithmetic DMS performed would measure nothing.
+
+**A second sender is what turns a notification panel into a notification module.** Phase 6
+delivered the store and the bell for UC042; on its own that is a job list with a bell on
+it. UC023's *"notifications based on dates created for me"* is the second, and it runs from
+the app shell rather than from the notifications page — a sender that only fires while you
+are looking at the inbox is not a sender. UC058's catalogue is deliberately **closed**:
+subscribing presupposes a named set of things to subscribe to, and the eight events are each
+anchored to the use case that raises them.
+
+*Two bugs the harness caught, both worth recording because neither is visible in a unit
+test:* the due-date sender initially deduplicated against a **session** flag while the
+notifications themselves persist, so every reload added another copy of the same four
+overdue countries and a few minutes of clicking produced an inbox of sixty. Deduplicating
+against the persisted inbox fixed that and exposed the subtler half — the cap counted
+notices *raised on this pass* rather than notices already present, so each pass skipped its
+own four, found the next four countries down the list and raised those too, walking the
+whole overdue set and then looping forever once the store's 50-notification limit started
+dropping the titles the dedupe was built from. Both are one-line mistakes that read
+correctly.
+
+**UC044's dataset-level restore is built, and it is preview-then-apply.** This was carried
+as an open item from Phase 4, where the per-observation half shipped. The bulk half needs
+an as-of query the client did not expose, so `XMartClient` gained `getDatasetAsOf` — one
+round trip, not one per key, which is what it would have to be against a real warehouse.
+Only observations whose value on that date differs are listed; one whose history does not
+reach back that far is left alone rather than blanked, because restoring it to *nothing*
+would delete data on the strength of missing evidence. Applying it is a `putObservations`
+with the author attached, like any other edit.
+
+**Annex 3 is data, not prose, and it says what it cannot show.** The thirteen requirements
+are a typed list with a per-row evidence level, so the page renders every one and marks
+**OAuth 2.0 and HTTPS as design commitments** rather than claiming them — a browser
+prototype has no auth server and transport is a deployment property. The other eight
+mandatory rows are demonstrated live: the request is built from the form, sent through
+`XMartClient`, and the CSV that downloads is the xMart long format with `Sys_ID` and
+`Sys_CommitDateUtc` in it. Paging metadata travels in **headers**, never wrapped around the
+body, because a JSON envelope over a CSV payload would defeat the annex's own stated reason
+for preferring CSV.
+
+*Also worth noting:* the "Pull from xMart" button performs real requests and invalidates the
+query cache, so the call log genuinely fills while the progress bar moves — which is also
+why the harness navigates that page by clicking tabs rather than by URL, the log being
+in-memory module state that a full page load resets. The per-source sync table ships with
+one **failed** source on purpose: a status table where every row is green demonstrates
+nothing about the status table.
+
+*Deferred, and stated rather than quietly dropped:* email as a delivery channel is
+configurable on a subscription and labelled as server-sent — this build has no mail
+transport and the editor says so. The bundle is now **2.11 MB (635 kB gzipped)**, up from
+2.01 MB; route-level `React.lazy` remains the Phase 8 packaging task it already was.
 
 ### Phase 8 — Polish, demo script, packaging (1.5 d)
 
@@ -871,6 +972,6 @@ already was.
 |---|---|
 | Pilot use cases (Y) in the RFP | 41 |
 | Pilot use cases covered by this prototype | **41** |
-| Non-Pilot (N) use cases covered as bonus | 8 — UC008, 010, 011, 032, 033, 037, 038, 040 (+ partial 003.1, 018, 020, 021, 034, 041, 049, 051, 058) |
-| Annex 3 mandatory API requirements demonstrated | 10 of 10, on one screen |
+| Non-Pilot (N) use cases covered as bonus | 12 — UC003.1, 008, 009, 010, 011, 032, 033, 037, 038, 040, 058, 059 (+ partial 018, 020, 021, 034, 041, 049, 051) |
+| Annex 3 mandatory API requirements demonstrated | 10 of 10, on one screen — 8 shown live, 2 (OAuth 2.0, HTTPS) stated as design commitments |
 | Estimated effort | ≈19 developer-days |

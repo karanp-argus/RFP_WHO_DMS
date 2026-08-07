@@ -13,6 +13,7 @@
  */
 
 import { DEMO_NOW, DIMENSIONS, SOURCE_FORMATS, type DimensionCode } from '@/domain/constants'
+import type { SyncStatus } from '@/domain/integration'
 import { dimsKey, observationKey } from '@/domain/keys'
 import type {
   Classification,
@@ -37,11 +38,15 @@ import { CURRENCIES } from '../seed/currencies'
 import { FORMULA_COUNTRY_OVERRIDES, LEGACY_FORMULAS, PREDEFINED_FORMULAS } from '../seed/formulas'
 import { METADATA_FIELD_DEFS } from '../seed/metadataFields'
 import { REPORTING_CONTACTS } from '../seed/reportingFollowUp'
+import { buildSyncStatuses } from '../seed/syncStatus'
 import { SEED_USERS } from '../seed/users'
 import { buildRequestUrl, logApiCall } from './apiLog'
 import {
+  DATASET_AS_OF_MAX_SCAN,
   DEFAULT_PAGE_SIZE,
   MOCK_LATENCY_MS,
+  type DatasetAsOfChange,
+  type DatasetAsOfResult,
   type ObservationChange,
   type ObservationPage,
   type ObservationQuery,
@@ -230,6 +235,66 @@ function versionsForKey(key: string): readonly ObservationVersion[] {
 }
 
 /* --------------------------------------------------------------------------
+   Dataset-level as-of (UC044)
+   -------------------------------------------------------------------------- */
+
+/**
+ * What a slice looked like on a past date.
+ *
+ * The rule is *"the version that was current on that date"* — the newest
+ * version whose commit stamp is at or before the as-of instant. An observation
+ * with no such version is skipped rather than treated as null: its history
+ * simply does not reach back that far, and restoring it to "nothing" would
+ * delete data on the strength of missing evidence.
+ */
+function datasetAsOf(query: ObservationQuery, asOfUtc: string): DatasetAsOfResult {
+  const rows = generate(query)
+  const cutoff = Date.parse(asOfUtc)
+  const changes: DatasetAsOfChange[] = []
+
+  const budget = Math.min(rows.length, DATASET_AS_OF_MAX_SCAN)
+  let withHistory = 0
+
+  for (let i = 0; i < budget; i++) {
+    const o = rows[i]
+    if (!o) continue
+    const key = observationKey(o.iso3, o.year, o.dims)
+    const versions = versionsForKey(key)
+    if (versions.length === 0) continue
+    withHistory++
+
+    // Versions are chronological, so the last one at or before the cutoff is
+    // the one that was current.
+    let asOf: ObservationVersion | undefined
+    for (const v of versions) {
+      if (Date.parse(v.commitDateUtc) <= cutoff) asOf = v
+      else break
+    }
+    if (!asOf) continue
+    if (asOf.value === o.value) continue
+
+    changes.push({
+      observationKey: key,
+      iso3: o.iso3,
+      year: o.year,
+      code: Object.values(o.dims).join(' × '),
+      currentValue: o.value,
+      asOfValue: asOf.value,
+      asOfCommitDateUtc: asOf.commitDateUtc,
+      asOfAuthor: asOf.author,
+    })
+  }
+
+  return {
+    asOfUtc,
+    scanned: budget,
+    withHistory,
+    changes,
+    truncated: rows.length > budget,
+  }
+}
+
+/* --------------------------------------------------------------------------
    Import batches (UC039)
    -------------------------------------------------------------------------- */
 
@@ -409,6 +474,24 @@ export const mockXMartClient: XMartClient = {
       },
     ),
 
+  getDatasetAsOf: (query: ObservationQuery, asOfUtc: string) =>
+    call(
+      'getDatasetAsOf',
+      'pull',
+      'HEALTH_EXPENDITURE_HISTORY',
+      {
+        $filter: [
+          query.countries?.length ? `SURVEY_FK startswith (${query.countries.join(',')})` : null,
+          `Sys_CommitDateUtc le ${asOfUtc}`,
+        ]
+          .filter(Boolean)
+          .join(' and '),
+        $apply: 'groupby((Sys_ID), aggregate(Sys_CommitDateUtc with max as AsOf))',
+      },
+      () => datasetAsOf(query, asOfUtc),
+      (r) => r.changes.length,
+    ),
+
   putObservations: (changes: readonly ObservationChange[]) =>
     call(
       'putObservations',
@@ -459,6 +542,16 @@ export const mockXMartClient: XMartClient = {
       'REPORTING_FOLLOWUP',
       {},
       () => REPORTING_CONTACTS as readonly ReportingContact[],
+      (r) => r.length,
+    ),
+
+  getSyncStatus: () =>
+    call(
+      'getSyncStatus',
+      'pull',
+      'LOAD_STATUS',
+      { $orderby: 'LastSyncUtc desc' },
+      (): readonly SyncStatus[] => buildSyncStatuses(),
       (r) => r.length,
     ),
 

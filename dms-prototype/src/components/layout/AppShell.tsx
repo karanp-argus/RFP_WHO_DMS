@@ -9,13 +9,21 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
+import { ApiLogDrawer } from './ApiLogDrawer'
 import { cn } from '@/lib/utils'
+import { useDueDateNotifications } from '@/hooks/useDueDateNotifications'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 
 export function AppShell() {
   const user = useAuthStore((s) => s.user)
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
+
+  // UC023 → UC058. Mounted on the shell, not on the notifications page: a
+  // sender that only runs while you are looking at the inbox is not a sender.
+  // The hook no-ops until the contacts query resolves, so it is safe above the
+  // sign-in guard's early return in terms of ordering — it is called before it.
+  useDueDateNotifications()
 
   if (!user) return <Navigate to="/login" replace />
 
@@ -34,6 +42,7 @@ export function AppShell() {
       >
         <Outlet />
       </main>
+      <ApiLogDrawer />
     </div>
   )
 }

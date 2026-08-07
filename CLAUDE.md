@@ -254,6 +254,32 @@ them with the reasoning. Do not "fix" them by inventing new brand colours.
   built it for UC042; Phase 7's notification module adds senders and configuration around
   it, not a second store.
 
+## Users, permissions and notifications (Phase 7)
+
+- **There is no `deleteUser`, and there must never be one.** UC012 disables rather than
+  deletes so log references survive — `Sys_FirstLoadUser`, version authors and every rule's
+  `createdBy` point into the directory. The absence is structural, not a hidden button.
+- **UC010's guard covers two doors.** Disabling the last enabled administrator *and*
+  demoting them to Regular User both empty the role. `applyUserChange` refuses both.
+- **`no-access` is never offered to a regular user** (UC007 guarantees view + export on
+  every module), and each module offers only the levels that mean something there —
+  "Edit Selected Countries" has no meaning on Users. See `domain/users/matrix.ts`.
+- **`authStore.regularPermissions` is the single matrix.** `usePermissions` reads it and so
+  does the UC008 editor's capability preview; there is no second copy to drift.
+- **Subscriptions follow UC050's visibility, not UC037's** — an administrator sees a user's
+  subscriptions (so one can be promoted), but never their custom reports. Both asymmetries
+  are what their use cases say; do not "fix" either.
+- **`notificationStore` is the delivery mechanism; senders live outside it.** UC042's job
+  queue and `useDueDateNotifications` (UC023) are the two. A sender must deduplicate against
+  the **persisted inbox** and cap on *notices already present*, not on notices raised this
+  pass — getting either wrong produces an inbox of duplicates or an infinite render loop,
+  and both mistakes read correctly.
+- **The completeness heatmap is the one place a null observation counts as unreported.**
+  Everywhere else it is a valid record (FR §1). `expected` is a parameter so a country with
+  no rows scores zero rather than 0/0.
+- **Annex 3 rows carry an evidence level.** OAuth 2.0 and HTTPS are `design`, not
+  `demonstrated`. Never promote a row this build cannot exhibit.
+
 ## Dependency notes
 
 **[DEPENDENCIES.md](DEPENDENCIES.md) is the full register** — every package, its installed

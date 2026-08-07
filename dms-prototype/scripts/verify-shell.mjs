@@ -62,7 +62,9 @@ async function signIn(page) {
   await page.getByRole('heading', { name: 'Modules' }).waitFor()
   await page.locator('header button').last().click()
   await page.getByRole('menuitem', { name: 'Regular user' }).click()
-  await page.getByText('You have regular user access', { exact: false }).waitFor()
+  // Phase 7 rewrote the Home header copy when the dashboard landed; the check
+  // is on the role-dependent sentence, whatever its current wording.
+  await page.getByText('Regular user access', { exact: false }).waitFor()
   await shot(page, '04-home-regular-1440', page.getByRole('heading', { name: 'Modules' }), {
     fullPage: true,
   })

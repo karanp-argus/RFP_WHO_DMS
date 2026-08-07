@@ -17,6 +17,7 @@
     "verify:workbook": "node scripts/verify-workbook.mjs",
     "verify:qc": "node scripts/verify-qc.mjs",
     "verify:reports": "node scripts/verify-reports.mjs",
+    "verify:phase7": "node scripts/verify-phase7.mjs",
     "verify:zindex": "node scripts/verify-zindex.mjs",
     "verify:shell": "node scripts/verify-shell.mjs"
   },
