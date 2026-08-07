@@ -62,7 +62,10 @@ export function ClassificationsTab() {
           placeholder="Search codes and labels, e.g. HF.1.2 or out-of-pocket"
           className="h-9 max-w-md"
         />
-        <div className="ml-auto flex items-center gap-2">
+        {/* `flex-wrap` for the same reason as `DataTable`'s toolbar — see the
+            note there. An unwrappable button group is what pushed Setup sideways
+            at 768. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           <Button
             variant="outline"
             size="sm"

@@ -338,7 +338,9 @@ function EvaluationBar({
         </Select>
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      {/* `flex-wrap` for the same reason as `DataTable`'s toolbar — see the note
+          there. */}
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
         {isLoading ? (
           <span className="text-[length:var(--text-meta)] text-who-text-muted">
             Resolving values from xMart…

@@ -82,15 +82,28 @@
   /* -- Workbook cell semantics --
      Carried over from the legacy DMS screenshots: blue rows are country-reported
      values, pink rows are calculated indicators. UC031 also requires formula
-     cells to render in a different colour + italic. */
-  --who-cell-value: #dce6f4;
-  --who-cell-indicator: #f4dcdc;
+     cells to render in a different colour + italic.
+
+     Both tints were lightened one step at Phase 8 (`#DCE6F4` → `#E0E9F6`,
+     `#F4DCDC` → `#F7E2E2`). At the original values, UC031's blue italic formula
+     text on a *calculated* row measured 4.49:1 and a null cell's muted
+     placeholder 4.34:1 — the audit had only ever checked formula text on a
+     reported (blue) row. Still unmistakably blue and pink, which is the part
+     that is muscle memory. */
+  --who-cell-value: #e0e9f6;
+  --who-cell-indicator: #f7e2e2;
   --who-cell-formula: #1a5fd0;
 
-  /* -- Status -- */
-  --who-pass: #2e7d5b;
-  --who-warn: #9c6415; /* darkened from #B7791F, which was 3.6:1 on white */
-  --who-fail: #c0392b;
+  /* -- Status --
+     These are designed here, not lifted from the reference, and Phase 8 nudged
+     all three down by 1.5–2.5% lightness. Phases 5–7 draw status *text on a 5–15%
+     tint of the same token* (a QC finding, a threshold warning, a job chip) and
+     on the page canvas rather than only on white, and at the previous values
+     those combinations landed at 4.34–4.41:1. Verify with
+     `node scripts/contrast-audit.mjs`, which measures each of them. */
+  --who-pass: #2d7b5a; /* was #2E7D5B — 4.39:1 on its own 10% tint */
+  --who-warn: #956014; /* was #9C6415, itself darkened from #B7791F (3.6:1) */
+  --who-fail: #bb382a; /* was #C0392B — 4.34:1 on its own 15% tint */
 
   /* -- Elevation -- */
   --who-shadow-card: 4px 4px 11px #dedee2;
@@ -181,7 +194,7 @@
   /* -- Status: lightened for contrast on dark surfaces -- */
   --who-pass: #4fbf8b;
   --who-warn: #e0a94a;
-  --who-fail: #f0705f;
+  --who-fail: #f37260;
 
   /* -- Elevation: soft shadows vanish on dark, so go darker and tighter -- */
   --who-shadow-card: 0 2px 10px rgb(0 0 0 / 0.5);
@@ -311,24 +324,53 @@
 
 /* ===========================================================================
    CONTRAST AUDIT (WCAG 2.1)
-   Measured against the live computed values; re-run after any token change.
-   Dark theme passes every pair at AA. Light theme has three known shortfalls,
-   all inherited from the WHO reference palette and all deliberately left alone
-   — changing them would alter WHO brand colours, which is not ours to decide:
+
+   THE AUDIT IS A SCRIPT, NOT THIS COMMENT. Run it after ANY token change:
+
+       node scripts/contrast-audit.mjs        (or: npm run audit:contrast)
+
+   It parses this file, resolves every var() chain, composites the alpha tints
+   Phases 5–7 draw with, and measures 52 pairs in both themes. It exits non-zero
+   on an unexpected failure — and also if one of the three shortfalls below has
+   silently got worse, so "documented" cannot decay into "ignored". It needs no
+   dev server and no browser, which is why it moved out of `verify-theme.mjs`.
+
+   Current state: **52 pairs × 2 themes — dark clears every bar; light has three
+   known shortfalls and nothing else.** All three are inherited from the WHO
+   reference palette and are deliberately left alone, because changing them would
+   alter WHO brand colours and that is not ours to decide:
 
      4.29:1  sidebar label (#FFF on $blue-bg #4D7AC4)
              0.21 short of AA for 15px text. Fixed by either a marginally darker
              blue or larger/heavier label text. Flag to WHO; do not guess.
-     3.48:1  --who-primary-blue on white
-             PASSES the 3:1 bar for UI components (borders, focus rings, active
-             underlines), which is all it is used for. It must NOT be used for
-             body text on a light surface.
+     2.24:1  --who-hint on --who-surface
+             The reference's #A4AFB7. Restricted to decorative hints — never to
+             text a user must read. Enforced by convention, not by the type system.
      2.52:1  --who-sidebar-accent on --who-sidebar
              The 4px active indicator. Decorative: the row background also
              changes on active, so colour is never the sole state signal.
 
-   Everything else clears AA (4.5:1) in both themes, including the workbook cell
-   semantics: formula text on a value cell is 4.6:1 light / 6.6:1 dark.
+   --who-primary-blue on white is 3.48:1, which is a PASS: it clears the 3:1 bar
+   for UI components (borders, focus rings, active underlines) and that is all it
+   is used for. It must NOT be used for body text on a light surface.
+
+   Phase 8 moved five values, each because a Phase 4–7 *combination* — not a new
+   token — fell short. See the notes beside them above. What is worth knowing
+   without reading the script:
+
+     · Status text sits on a 5–15% tint of its own colour throughout Phases 5–7
+       (findings, thresholds, job chips), which is a tighter pair than the same
+       text on white. All three status tokens now clear 4.5:1 against white, the
+       page canvas, and their own tints.
+     · UC031 renders formula cells blue and italic, including on the pink
+       calculated rows — a pair nobody had measured until Phase 8.
+     · The completeness heatmap's bands are chosen for luminance separation.
+
+   ONE LATENT ISSUE, recorded rather than fixed: shadcn's --color-chart-2 and
+   --color-chart-3 map onto --who-sidebar and --who-brand, which measure 1.25:1
+   and 2.48:1 on the dark surface — unreadable as a chart series. Nothing draws
+   with them today (the QC scatter uses --who-fail / --who-warn), so the audit
+   does not report them as failures. Fix them BEFORE adding a second chart.
    =========================================================================== */
 
 /* ===========================================================================

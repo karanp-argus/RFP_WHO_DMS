@@ -132,6 +132,10 @@ Two things this table proves about the required engine:
 | **Integration** | UC045 xMart→DMS, UC046 DMS→xMart, UC056 develop in xMart, UC060 old-formula migration | UC057 volumes, UC060.1 formula translation |
 | **Notifications** | — | UC058 module, UC059 create/edit |
 
+**Correction (Phase 8).** The table above accounts for **40** of the 41 Pilot rows. The missing
+one is **UC061 *Phased implementation***, which has no module because it is not software — it is
+the delivery approach, answered by §5 of this document. See §8.
+
 **Deliberate strategy:** we will build **all 41 Pilot use cases plus 6 high-impact "N" items** (UC008 role permission matrix, UC010/UC011 disable/enable, UC032 workbook export, UC033 locking, UC040 favourites). Those six are cheap in a front-end-only build and each is a visible "they went beyond the pilot" moment.
 
 ### 1.6 Hard functional constraints worth calling out
@@ -932,14 +936,155 @@ transport and the editor says so. The bundle is now **2.11 MB (635 kB gzipped)**
 7. `npm run build` → static bundle; verify it runs from `file://` or a static host so the demo cannot be broken by a network.
 8. Optional: `?scenario=` URL params to jump straight to demo states, so a mis-click never costs 30 seconds in front of the panel.
 
+**Done when:** the whole §6 path runs on the built bundle from a static host with no network,
+every module has a loading, empty and error state, and the two written artefacts are complete
+and honest. → No new use cases; UC061 is answered by the phasing in this plan.
+
+**Outcome (built, verified, committed).** The route split, the polish pass, the keyboard pass,
+two new static audits, two new browser harnesses, and the two written exhibits. **413 passing
+tests** (2 new, both on the financing split below) and **386 asserted browser checks across
+seven harnesses** — the two new ones are `npm run verify:keyboard` (32) and
+`npm run verify:responsive` (123). Every harness was re-run against the **production build
+served from a bare static server**, not just against the dev server: 34/34 workbook, 49/49 QC,
+51/51 reports, 92/92 Phase 7, 32/32 keyboard, and all 13 DEMO_SCRIPT URLs landing with zero
+console errors.
+
+**Item 4 from the handover first: the CHE financing split now reconciles.** For Canada 2022
+the Formulas tab read `GGHE-D%CHE` 49.2 + `PVT-D%CHE` 66.1 + `EXT%CHE` 0.5 = **116%**, because
+the generator drew `GGHE-D` as an independent share of CHE while `PVT-D` and `EXT` came out of
+the FS partition. The engine and the arithmetic were both correct; the two generator paths
+simply were not tied together, and it is the first line an HA economist reads. `GGHE-D` is now
+derived from **`FS.1 + FS.3`**, which is what SHA 2011 says it is, so the three indicators
+partition the same eight FS leaves and sum to ~100 by construction. Median reconciliation
+across all 194 countries is **99.9%**, with the intended residual band of 93–107% surviving —
+`CHE` sums the HF partition and these sum the FS one, each carrying an independent 94–101%
+coverage draw, and the QC between-category rules need genuine small discrepancies to sit
+alongside the planted ones.
+
+**The fix exposed a second problem worth more than the first.** With `GGHE-D` merely re-pointed
+at `FS.1 + FS.3`, France came out at 31% government-financed and Japan at 18% — both
+high-income countries whose real figures are near 80%, and both plausible demo subjects. The
+cause is that every FS leaf drew `U(0.05, 1)` independently, so three private draws and two
+government draws produced two independent spreads multiplied together. Government revenue is
+now sized as a **ratio to the realised private weights**, banded by income
+(`GOV_REVENUE_RATIO`), which turns two spreads into one. The medians land at **27 / 46 / 62 /
+76%** for LIC / LMC / UMC / HIC against real-world figures of roughly 25 / 40 / 55 / 75, and
+Canada, France, Japan and Kenya all read plausibly. This is the mirror of the existing
+`OOP_MULTIPLIER` and `EXTERNAL_WEIGHT` gradients — all three have to move against each other or
+the financing picture contradicts itself. Two new tests in `phase1.test.ts` lock both
+properties in, skipping country-years carrying a declared defect so the fixtures do not fight
+the QC corpus. *The Phase 5 note attached to this item is now obsolete: with the level made
+meaningful, a plain cross-sectional outlier comparison would work. The rules were left on
+year-on-year movement — they are verified, they are what UC053 asks for, and rewriting working
+detection logic to exploit a data fix is not a Phase 8 change.*
+
+**The bundle: 2.11 MB in one chunk → a 225 kB gzipped critical path.** `React.lazy` on all
+fifteen page components, which is the natural cut — `routes.tsx` already is the single source
+of navigation truth, so the manifest changed and nothing else did. `AppShell` gained one
+`Suspense` and one `ErrorBoundary` around the `Outlet`, both keyed on the pathname. Two things
+had to follow it:
+
+- **Rolldown's default splitting emitted eighty chunks, twenty of them a single 150-byte Lucide
+  icon.** That trades one oversized request for a burst of tiny ones. `advancedChunks` with a
+  24 kB `minSize` and named vendor groups brings it to 61.
+- **Two regressions that a chunk-size table cannot show.** The header's notification bell
+  imported `downloadBlob` from `lib/exporters`, so **SheetJS's 487 kB was a static dependency of
+  the sign-in screen**; and a `vendor-charts` group collected a shared low-level helper, so
+  every chunk imported one function from it and **369 kB of Recharts was `modulepreload`ed on
+  the sign-in screen too**. The first is fixed by splitting the four "save bytes the browser
+  already has" helpers into `lib/download.ts`, which imports nothing; the second by deleting the
+  group, because Recharts has exactly one consumer and the default splitting already put it
+  there. Both were invisible in `npm run build`'s output and obvious the moment the *critical
+  path* was measured rather than the chunk list — which is now `npm run audit:bundle`, a gate
+  that fails if either library reappears on the first-paint path, if the critical path passes
+  250 kB gzipped, or if a page stops being a lazy chunk.
+
+**The contrast audit is now a script, and promoting it found eight real failures.** It reads
+`globals.css` directly, resolves every `var()` chain and composites the alpha tints, so it needs
+no dev server and no browser — which is why the old browser-embedded version ran once a phase
+instead of after every token change. It grew from 18 pairs to **52**, because Phases 4–7 added
+no new colour *tokens* but a great many new *combinations*, and a combination is what contrast
+is a property of. Five values moved:
+
+| Token | Was | Now | Because |
+|---|---|---|---|
+| `--who-pass` (light) | `#2E7D5B` | `#2D7B5A` | 4.39:1 on its own 10% tint — Phases 5–7 draw status text on a 5–15% tint of the same colour |
+| `--who-warn` (light) | `#9C6415` | `#956014` | 4.36:1 on its own 10% tint, 4.36:1 on the page canvas |
+| `--who-fail` (light) | `#C0392B` | `#BB382A` | 4.34:1 on its own 15% tint |
+| `--who-fail` (dark) | `#F0705F` | `#F37260` | 4.40:1 on its own 15% tint |
+| `--who-cell-value` / `--who-cell-indicator` | `#DCE6F4` / `#F4DCDC` | `#E0E9F6` / `#F7E2E2` | **UC031's blue italic formula text on a *calculated* row was 4.49:1** — only formula-on-a-reported-row had ever been measured — and a null cell's muted placeholder was 4.34:1. Both tints are still unmistakably blue and pink, which is the part that is muscle memory |
+
+The heatmap bands moved too, and for a reason WCAG has no criterion for: `fail/55` against
+`warn/60` measured **1.02:1** in the light theme — different hues, near-identical brightness, so
+the cliff between "sparse" and "almost complete" vanished for anyone reading the grid by
+lightness. The ladder is now `fail/85 · warn/50 · pass/30 · pass/75`, every consecutive pair at
+≥1.36:1 light and ≥1.48:1 dark. **The three documented light-theme shortfalls are unchanged and
+deliberate** — they are WHO reference-palette values and not ours to redefine — and the script
+now fails if one of them gets *worse*, so "documented" cannot decay into "ignored". One latent
+issue is recorded rather than fixed: shadcn's `--color-chart-2` and `--color-chart-3` map onto
+`--who-sidebar` and `--who-brand`, which are 1.25:1 and 2.48:1 on the dark surface. Nothing
+draws with them, so the audit does not report them — measuring an unused token and calling it a
+defect is how an audit earns a reputation for noise.
+
+**The keyboard pass found three real defects, all invisible in a screenshot.** Esc did nothing
+on the metadata drawer or the QC findings panel — both are deliberately *not* Radix portals
+(§2.4 requires that they not unmount the grid), so neither got Esc for free. And the workbook's
+`Ctrl+Z` listener is on `window` and calls `preventDefault`, so typing a comment in the metadata
+drawer and pressing Ctrl+Z **reverted a grid edit instead of the sentence** — the shortcuts now
+ignore any editable element outside `.dsg-container`. Esc in a dirty metadata field reverts the
+field and only a second Esc closes the panel, because closing a drawer with a half-typed comment
+in it throws the comment away silently. Arrow navigation, Tab and Enter-commit turned out to be
+DSG's own behaviour and needed nothing; they are asserted anyway, because "the grid handles it"
+is not a claim to make untested in front of a panel.
+
+**The responsive sweep found one genuine overflow.** `DataTable`'s toolbar wrapped but its
+right-hand button group did not, so five or six buttons formed one unbreakable 542px block —
+wider than the content column at 1024 and 768, where the 300px left padding is fixed, and the
+whole page slid sideways under the fixed sidebar. Fixed with `flex-wrap` in three toolbars. The
+harness probes `document.scrollWidth` and *names the offending element*, because "the page
+scrolls sideways at 1024" is not actionable on its own. It also caught a bug in its own first
+draft: it asserted the sidebar was a drawer at ≤768, but Tailwind's `md:` is `min-width: 768px`,
+so 768 is the first *pinned* width. The breakpoint is now checked at 767 and 768 explicitly.
+
+**Static hosting needed two things, and `vite preview` hid both.** A bare static server over
+`dist/` returns **404 for every route except `/`**, which breaks every URL in the demo script.
+The build now writes a `404.html` (the convention GitHub Pages, Netlify, Cloudflare Pages and S3
+website hosting all honour) and ships `scripts/serve-dist.mjs` — a zero-dependency SPA server, so
+the thing that serves the demo is not itself a dev dependency. `file://` is **not** supported and
+the README says why: the scheme cannot load ES modules and has no path rewrite, so it is a
+limitation of `file://` rather than of the build, and a hash-router shim to work around it would
+change every URL in DEMO_SCRIPT.md.
+
+**The coverage matrix was rebuilt from the RFP's own summary table rather than from this plan.**
+Both exhibits are scored by a panel that has the RFP open, so the Pilot flags are extracted from
+the document and cross-checked programmatically: 64 rows, all present, no flag mismatches. That
+surfaced two corrections to §1.5 and §8, recorded below. Every ◐ in the matrix names its limit
+in the same row — a partial that does not say what is missing reads as a full one.
+
+*Item 8 was optional and is not built.* `?scenario=` params would need a scenario registry and
+a seeded state per beat, and DEMO_SCRIPT.md achieves the same thing with what already exists:
+**every beat carries its own URL and no beat depends on the previous one having been performed**,
+because the filter chips, the Setup tabs, the integration tabs and every detail route are all
+already URL-addressable. A mis-click costs a paste, not thirty seconds.
+
+*Open items closed:* handover items 1 (three unused packages removed), 2 (audit promoted), 3
+(legacy screenshot extracted), 4 (financing split) and 5 (bundle). Item 11 stands as written.
+
 ---
 
 ## 6. Demo script skeleton (12 minutes)
 
+**Delivered in full as [DEMO_SCRIPT.md](DEMO_SCRIPT.md)** at Phase 8, with the exact URL for
+every beat and the sentence to say while it loads. Two corrections the build forced on the
+skeleton below, both recorded rather than silently applied: **194 countries, not 196** (the WHO
+Member State count, asserted in `phase1.test.ts`), and UC022's grouping is demonstrated in the
+*country picker*, not by a group-by control on the Setup grid — on Setup it is the groupable-
+attribute flag, which is where the requirement actually puts it.
+
 | min | Beat | Use cases |
 |---|---|---|
 | 0:00 | Entra ID sign-in → Home dashboard as Administrator | UC001, 002, 003, 006 |
-| 1:00 | Setup → Countries: 196 rows, drag a column, group by WHO region | UC013, 014, 015, 022 |
+| 1:00 | Setup → Countries: 194 rows, drag a column, show the groupable-attribute flag | UC013, 014, 015, 022 |
 | 2:00 | Setup → Formulas: `CHE%GDP`, show the parsed AST and dependency graph, override it for one country | UC029, 030 |
 | 3:00 | **Before / after (§2.4).** Legacy "Express Report" screenshot beside the new workbook. Name the four replacements — filter chips for the dropdown row, pinned headers for the zoom control, continuous scroll for paging, inline metadata for the separate tab — then state what is deliberately *unchanged*: years across, variables down, pink/blue row semantics, scale selector. "We kept what your team knows and replaced what slows them down." | §2.4 |
 | 3:30 | Workbook: Canada × HF × 2000–2024. Edit `HF.1` → `CHE` and `CHE%GDP` recompute live | UC031 |
@@ -968,10 +1113,30 @@ transport and the editor says so. The bundle is now **2.11 MB (635 kB gzipped)**
 
 ## 8. Coverage summary
 
+**Rebuilt at Phase 8 from the RFP's own summary table**, not from §1.5, and cross-checked
+programmatically: 64 rows, every one present, no Pilot-flag mismatches. Two corrections fell out
+of that, and both are recorded here rather than quietly applied — because a coverage matrix that
+has been silently edited is worth nothing to the panel reading it:
+
+- **UC034** *(User customized display of metadata fields)* was listed below as *partial*. It is
+  built in full — the metadata drawer's fields are drag-reorderable and the order persists per
+  user — so the bonus count is **13, not 12**.
+- **UC061** *(Phased implementation)* is flagged Pilot in the RFP, and the honest status is
+  neither ✅ nor ○: it is a delivery plan, answered by this document's roadmap rather than by
+  software. Counting a roadmap as working software is exactly the overstatement §7 warns about,
+  so the Pilot line below now reads 40 in the application plus UC061 answered in the proposal.
+
 | | Count |
 |---|---|
 | Pilot use cases (Y) in the RFP | 41 |
-| Pilot use cases covered by this prototype | **41** |
-| Non-Pilot (N) use cases covered as bonus | 12 — UC003.1, 008, 009, 010, 011, 032, 033, 037, 038, 040, 058, 059 (+ partial 018, 020, 021, 034, 041, 049, 051) |
+| Pilot use cases demonstrable in the application | **40** — 35 fully, 5 with a stated limit (UC006, 028, 045, 046, 056) |
+| The 41st | UC061 *Phased implementation* — a delivery plan, answered by §5 of this document |
+| Non-Pilot (N) use cases covered as bonus | **13** — UC003.1, 008, 009, 010, 011, 032, 033, 034, 037, 038, 040, 058, 059 |
+| Non-Pilot partial | 7 — UC018, 019, 021, 041, 049, 051, 057, each naming its limit |
+| Non-Pilot not built | 3 — UC020, 031.1, 060.1, each with the reason stated on screen or in the README |
 | Annex 3 mandatory API requirements demonstrated | 10 of 10, on one screen — 8 shown live, 2 (OAuth 2.0, HTTPS) stated as design commitments |
 | Estimated effort | ≈19 developer-days |
+
+The full row-by-row matrix, with the limit named in every partial row, is
+**[README.md §5](README.md#5-use-case-coverage)** — it is a proposal exhibit and lives where a
+reviewer will open it first.

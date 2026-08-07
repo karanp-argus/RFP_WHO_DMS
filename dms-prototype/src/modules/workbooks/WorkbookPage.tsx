@@ -402,6 +402,25 @@ export function WorkbookPage() {
     const onKeyDown = (e: KeyboardEvent) => {
       const meta = e.ctrlKey || e.metaKey
       if (!meta) return
+
+      /**
+       * The listener is on `window`, so it also fired while the user was typing
+       * in the metadata drawer, the filter chips or a dialog — and because the
+       * Ctrl+Z branch calls `preventDefault`, it took the browser's own text undo
+       * with it. Typing a comment and pressing Ctrl+Z reverted a *grid edit*
+       * instead of the sentence, which is worse than doing nothing.
+       *
+       * The grid's own inputs live inside `.dsg-container`, so that is the one
+       * editable context where these shortcuts still belong.
+       */
+      const target = e.target as HTMLElement | null
+      if (
+        target?.closest('input, textarea, select, [contenteditable="true"]') &&
+        !target.closest('.dsg-container')
+      ) {
+        return
+      }
+
       const key = e.key.toLowerCase()
       if (key === 'c') {
         void handleCopy()

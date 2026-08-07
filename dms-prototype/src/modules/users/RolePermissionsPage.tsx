@@ -16,6 +16,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, Check, Minus, RotateCcw, ShieldCheck } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -97,6 +98,15 @@ export function RolePermissionsPage() {
                   onClick={() => {
                     setRegularPermissions(draft)
                     setEditing(false)
+                    // The matrix is what the app *enforces*, so the save has to
+                    // announce itself: the visible change is a table cell, and
+                    // the effect is that controls appear or vanish on five other
+                    // screens. Naming the count is what makes that connection.
+                    toast.success(
+                      changes.length === 1
+                        ? 'Permission saved — regular users see the change immediately.'
+                        : `${changes.length} permissions saved — regular users see the change immediately.`,
+                    )
                   }}
                 >
                   Save{changes.length > 0 ? ` (${changes.length})` : ''}
@@ -108,7 +118,10 @@ export function RolePermissionsPage() {
                   <Button
                     variant="outline"
                     className="gap-1.5"
-                    onClick={() => setRegularPermissions(DEFAULT_REGULAR_PERMISSIONS)}
+                    onClick={() => {
+                      setRegularPermissions(DEFAULT_REGULAR_PERMISSIONS)
+                      toast.success('Matrix reset to the delivered configuration.')
+                    }}
                   >
                     <RotateCcw className="size-4" />
                     Reset to delivered

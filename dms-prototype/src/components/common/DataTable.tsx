@@ -239,7 +239,13 @@ export function DataTable<T>({
           </div>
         ) : null}
 
-        <div className="ml-auto flex items-center gap-2">
+        {/* `flex-wrap` here as well as on the row above (Phase 8 responsive
+            pass). The outer row wrapped, but this group did not, so its five or
+            six buttons formed one unbreakable 542px block — at 1024 and 768 that
+            is wider than the content column (the 300px left padding is fixed),
+            and it pushed the whole page sideways underneath the fixed sidebar.
+            `justify-end` keeps it hugging the right once it does wrap. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {toolbar}
 
           {onToggleColumn ? (

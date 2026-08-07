@@ -282,6 +282,74 @@ describe('economic plausibility', () => {
     }
   })
 
+  /**
+   * The three financing aggregates exactly as the seeded formulas define them
+   * (`GGHE-D`, `PVT-D = FS.4+FS.5+FS.6+FS.nec`, `EXT = FS.2+FS.7`), expressed as
+   * shares of CHE. The FS leaves partition the same spending CHE totals over HF,
+   * so the three shares must reconcile to roughly 100.
+   */
+  const FS_LEAVES = ['FS.1', 'FS.2', 'FS.3', 'FS.4', 'FS.5', 'FS.6', 'FS.7', 'FS.nec']
+
+  function financingSplit(iso3: string, year = 2022) {
+    const v = (c: string) => derivedValue(iso3, year, c) ?? 0
+    const che = cheFromLeaves(iso3, year)
+    const gghed = derivedValue(iso3, year, 'GGHE-D') ?? 0
+    const pvtd = v('FS.4') + v('FS.5') + v('FS.6') + v('FS.nec')
+    const ext = v('FS.2') + v('FS.7')
+    return {
+      gghedChe: (gghed / che) * 100,
+      pvtdChe: (pvtd / che) * 100,
+      extChe: (ext / che) * 100,
+      total: ((gghed + pvtd + ext) / che) * 100,
+    }
+  }
+
+  /** True when a planted QC defect touches this country-year's FS partition. */
+  function financingIsDefective(iso3: string, year: number): boolean {
+    if (defectFor(iso3, 'GGHE-D', year)) return true
+    return FS_LEAVES.some((c) => defectFor(iso3, c, year) != null)
+  }
+
+  it('reconciles the CHE financing split — GGHE-D + PVT-D + EXT ≈ CHE', () => {
+    // GGHE-D used to be drawn as its own share of CHE while PVT-D and EXT came
+    // out of the FS partition, so Canada 2022 read 49.2 + 66.1 + 0.5 = 116%.
+    // GGHE-D is now FS.1 + FS.3, which closes the identity.
+    expect(financingSplit('CAN', 2022).total).toBeGreaterThan(90)
+    expect(financingSplit('CAN', 2022).total).toBeLessThan(110)
+
+    for (const c of COUNTRIES) {
+      if (financingIsDefective(c.CODE_ISO_3, 2022)) continue
+      const t = financingSplit(c.CODE_ISO_3, 2022).total
+      // The residual band is deliberate: CHE sums the HF partition and these
+      // sum the FS one, and each carries an independent 94–101% coverage draw.
+      // Real submissions do not reconcile perfectly, and the QC
+      // between-category rules need genuine discrepancies to sit alongside the
+      // planted ones.
+      expect(t).toBeGreaterThan(88)
+      expect(t).toBeLessThan(114)
+    }
+  })
+
+  it('makes government financing rise with income', () => {
+    // The mirror of out-of-pocket and external financing. Left income-blind,
+    // GGHE-D's share of CHE ranged 8–75% inside a single income group.
+    const med = (income: string) =>
+      median(
+        COUNTRIES.filter((c) => c.GRP_WB_INCOME === income)
+          .filter((c) => !financingIsDefective(c.CODE_ISO_3, 2022))
+          .map((c) => financingSplit(c.CODE_ISO_3).gghedChe)
+          .filter((v) => Number.isFinite(v)),
+      )
+    expect(med('LIC')).toBeLessThan(med('LMC'))
+    expect(med('LMC')).toBeLessThan(med('UMC'))
+    expect(med('UMC')).toBeLessThan(med('HIC'))
+    // And both ends land somewhere an HA economist would accept.
+    expect(med('LIC')).toBeGreaterThan(12)
+    expect(med('LIC')).toBeLessThan(45)
+    expect(med('HIC')).toBeGreaterThan(50)
+    expect(med('HIC')).toBeLessThan(85)
+  })
+
   it('leaves compulsory medical savings accounts rare, as in reality', () => {
     // HF.1.3 is essentially a Singapore/China instrument.
     const reporting = COUNTRIES.filter(

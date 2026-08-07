@@ -6,18 +6,23 @@
  * Redirects to the mock SSO screen when no session exists (UC006).
  */
 
-import { Navigate, Outlet } from 'react-router-dom'
+import { Suspense } from 'react'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { ApiLogDrawer } from './ApiLogDrawer'
+import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import { PageSkeleton } from '@/components/common/PageSkeleton'
 import { cn } from '@/lib/utils'
 import { useDueDateNotifications } from '@/hooks/useDueDateNotifications'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { routeTitle } from '@/routes'
 
 export function AppShell() {
   const user = useAuthStore((s) => s.user)
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
+  const { pathname } = useLocation()
 
   // UC023 → UC058. Mounted on the shell, not on the notifications page: a
   // sender that only runs while you are looking at the inbox is not a sender.
@@ -40,7 +45,17 @@ export function AppShell() {
           collapsed && 'md:pl-content-left-rail',
         )}
       >
-        <Outlet />
+        {/* Both boundaries sit *inside* the shell, so the sidebar, the header and
+            the role switcher survive a chunk that fails to load or a page that
+            throws — the recovery is "click another module", not "reload". Keyed
+            on the pathname: `Suspense` would otherwise re-show the skeleton for
+            an already-loaded route, and the error boundary would hold a caught
+            error across navigation. */}
+        <ErrorBoundary resetKey={pathname} label={routeTitle(pathname)}>
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
       <ApiLogDrawer />
     </div>

@@ -7,7 +7,9 @@
  * the wrong way round.
  */
 
-import { downloadBlob } from '@/lib/exporters'
+// `lib/download`, NOT `lib/exporters`: this module is reachable from the header's
+// notification bell, and `exporters` imports SheetJS. See lib/download.ts.
+import { downloadBlob } from '@/lib/download'
 import { recallJobFile, type ReportJob } from '@/stores/reportStore'
 
 /**

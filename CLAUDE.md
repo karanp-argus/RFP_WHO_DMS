@@ -17,7 +17,15 @@ npm run dev        # Vite dev server
 npm run build      # tsc -b && vite build
 npx tsc -b         # typecheck alone
 npx vitest run     # unit tests (formula engine, QC rules)
+
+npm run audit:contrast   # WCAG over 52 token pairs × 2 themes — no server, no browser
+npm run audit:bundle     # critical-path budget + route-split guard (run after a build)
+npm run serve:dist       # serve dist/ with SPA fallback, zero dependencies — the demo server
 ```
+
+**`audit:contrast` and `audit:bundle` are gates, not reports.** Both exit non-zero. Run
+`audit:contrast` after **any** change to `globals.css` and `audit:bundle` after any change to
+`routes.tsx`, `vite.config.ts`, or an import in a module the app shell can reach.
 
 ## Four structural rules — do not break these
 
@@ -141,10 +149,24 @@ Consequences to respect:
   (population, exchange rate) describe the present. Anchoring at 2000 and compounding
   forward once gave India 2.7 billion people and Canada a $619k GDP per capita.
 - **Economic realism is tested, not assumed.** `__tests__/phase1.test.ts` locks in the
-  income gradients — out-of-pocket and external financing both fall as income rises, real
-  reference exchange rates, residual `.nec` buckets stay small, `HF.1.1`/`HF.3.1` always
-  reported. Re-run after any generator change; an HA economist will spot wrong data
-  instantly and these ratios are what they look at first.
+  income gradients — out-of-pocket and external financing both fall as income rises,
+  government financing rises with it, real reference exchange rates, residual `.nec` buckets
+  stay small, `HF.1.1`/`HF.3.1` always reported. Re-run after any generator change; an HA
+  economist will spot wrong data instantly and these ratios are what they look at first.
+- **`GGHE-D` is `FS.1 + FS.3` — it is not an independent share of CHE.** SHA 2011 splits
+  revenues into eight FS leaves, and three seeded indicators partition them:
+  `GGHE-D = FS.1 + FS.3`, `PVT-D = FS.4 + FS.5 + FS.6 + FS.nec`, `EXT = FS.2 + FS.7`. So
+  `GGHE-D%CHE + PVT-D%CHE + EXT%CHE` **must** land near 100. Drawing `GGHE-D` separately gave
+  Canada 2022 a 116% financing split — the engine and the arithmetic were both right, the two
+  generator paths simply were not tied together, and it is the first line an economist reads.
+  The residual 93–107% band is *intended*: `CHE` sums the HF partition and these sum the FS
+  one, each with its own coverage draw, and the QC between-category rules need genuine small
+  discrepancies alongside the planted ones.
+- **The three financing weights are a system, not three independent knobs.**
+  `GOV_REVENUE_RATIO`, `OOP_MULTIPLIER` and `EXTERNAL_WEIGHT` must move against each other or
+  the picture contradicts itself. Government revenue is sized as a **ratio to the realised
+  private weights** rather than drawn independently — independent draws multiply two spreads
+  together and put France at 31% government-financed.
 - **QC defects are declared, not emergent** (`generators/defects.ts`). Phase 5 needs real
   findings at named countries and years the demo can navigate to. All eight UC053
   categories are covered.
@@ -209,10 +231,18 @@ Theme state is `next-themes` (`ThemeProvider`, `attribute="class"`, `storageKey`
 `dms-theme`, `defaultTheme` **light** so a demo opens identically on any machine).
 `index.html` carries `class="light"` so the first paint is never the wrong theme.
 
-**Re-run the contrast audit after any token change.** The dark theme passes AA on every
-pair. The light theme has three known shortfalls, all inherited from the WHO reference
-palette and all deliberately left alone — the table at the foot of `globals.css` records
-them with the reasoning. Do not "fix" them by inventing new brand colours.
+**Re-run `npm run audit:contrast` after any token change.** It parses `globals.css`, resolves
+every `var()` chain, composites the alpha tints Phases 5–7 draw status text on, and measures **52
+pairs in both themes** — no server, no browser, under a second. The dark theme passes every bar.
+The light theme has **three known shortfalls**, all inherited from the WHO reference palette and
+all deliberately left alone; the table at the foot of `globals.css` records them with the
+reasoning, and **the script fails if one of them gets worse**. Do not "fix" them by inventing new
+brand colours.
+
+A colour is a property of a **pair**, not of a token. Phases 4–7 added no new tokens and still
+introduced eight failing combinations — status text on a 10% tint of itself, UC031's blue italic
+on a *pink* calculated row, two heatmap bands with the same luminance. When you use an existing
+token somewhere new, add the pair to `scripts/contrast-audit.mjs`.
 
 ## Setup module patterns (Phase 2)
 
@@ -279,6 +309,53 @@ them with the reasoning. Do not "fix" them by inventing new brand colours.
   no rows scores zero rather than 0/0.
 - **Annex 3 rows carry an evidence level.** OAuth 2.0 and HTTPS are `design`, not
   `demonstrated`. Never promote a row this build cannot exhibit.
+
+## Packaging and polish (Phase 8)
+
+- **Every page component in `routes.tsx` is `React.lazy`, and every `lazy()` is at module
+  scope.** A `lazy()` created inside a component returns a new component type on every render,
+  which remounts the page and discards its state on every keystroke. The icons stay static — the
+  sidebar needs them before any page loads.
+- **`lib/download.ts` imports nothing, and that is the point.** Anything reachable from the app
+  shell imports `downloadBlob` / `stamped` / `downloadCsvText` from **`lib/download`**, never from
+  `lib/exporters` — `exporters` imports SheetJS, and one such import in the header's notification
+  bell put 487 kB of spreadsheet writer on the sign-in screen. `audit:bundle` fails if it comes
+  back.
+- **Do not add a `vendor-charts` chunk group.** One existed and Rolldown put a shared low-level
+  helper in it, so every chunk imported one function from it and 369 kB of Recharts was
+  `modulepreload`ed on the sign-in screen. Recharts has one consumer and the default splitting
+  already lands it there. Same trap for any group: a group whose modules fall below
+  `advancedChunks.minSize` is **silently discarded**, not honoured — set `minSize: 0` on a group
+  that is deliberately tiny.
+- **`Suspense` and `ErrorBoundary` live inside `AppShell`, around the `Outlet`, keyed on the
+  pathname.** Inside, so the sidebar, header and role switcher survive a failed route and the
+  recovery is "click another module" rather than "reload and sign in again". Keyed, because a
+  class boundary has no automatic reset and would otherwise hold a caught error across
+  navigation.
+- **The workbook's `Ctrl+Z/Y/C/V` listener is on `window` and must keep its editable-element
+  guard.** Without it, typing in the metadata drawer and pressing Ctrl+Z reverts a *grid edit* —
+  the handler calls `preventDefault`, so it takes the browser's own text undo with it. The guard
+  skips any `input`/`textarea`/`select`/`contenteditable` **outside `.dsg-container`**.
+- **The metadata drawer and the QC findings panel get Esc from `useEscapeKey`, not from Radix.**
+  Both are deliberately flex siblings of the grid rather than portals (§2.4 — they must not
+  unmount it), so they get no Esc, no focus trap and no scrim for free. In the drawer, one Esc
+  reverts a dirty field and only a second closes the panel: closing it with a half-typed comment
+  discards the comment silently.
+- **A wide surface scrolls inside its own container; the page never scrolls sideways.** The
+  content padding is fixed at `110px 40px 80px 300px`, so an unwrappable button row is wider than
+  the content column at 1024 and 768 and slides the whole page under the fixed sidebar.
+  `verify:responsive` probes `document.scrollWidth` at five widths in both themes and names the
+  offending element.
+- **The static demo needs a deep-link rewrite.** `BrowserRouter` makes `/setup` a real path; a
+  bare static server 404s on it. The build writes `404.html` and `scripts/serve-dist.mjs` does the
+  rewrite properly. **`file://` cannot work** — the scheme blocks ES modules and has no path
+  rewrite — and a hash-router shim to work around it would change every URL in DEMO_SCRIPT.md.
+- **Never hand-derive the use-case coverage matrix.** README §5 covers all 64 RFP rows, and the
+  Pilot flags are extracted from the RFP's own summary table in
+  `Requirements/2. Functional Requirements PFD-2026-001.docx` and cross-checked programmatically.
+  Hand-derivation is how the earlier "41 covered / 12 bonus" figures came to omit UC061 and
+  understate UC034. **Every ◐ row names its own limit** — a partial that does not say what is
+  missing reads as a full one, and a panel with the RFP open will find it.
 
 ## Dependency notes
 

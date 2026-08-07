@@ -10,28 +10,18 @@
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  // Revoke on the next tick — revoking synchronously can cancel the download
-  // in some browsers.
-  setTimeout(() => URL.revokeObjectURL(url), 0)
-}
+/*
+ * `triggerDownload`, `stamped`, `downloadBlob` and `downloadCsvText` now live in
+ * `lib/download.ts`, which imports nothing. They are re-exported here so the
+ * dozen existing call sites keep working, but a module that ONLY needs to save
+ * bytes must import them from `lib/download` — importing them from this file
+ * pulls SheetJS in with them. See the note at the top of `lib/download.ts`: the
+ * header's notification bell did exactly that, and put 487 kB of spreadsheet
+ * writer into the sign-in screen's critical path.
+ */
+export { downloadBlob, downloadCsvText, stamped, triggerDownload } from './download'
 
-/** Timestamped filename stem, so repeated exports do not collide. */
-export function stamped(stem: string, ext: string): string {
-  // Uses the wall clock deliberately: this names a file the user just created,
-  // it is not seeded demo data.
-  const d = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const ts = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`
-  return `${stem}-${ts}.${ext}`
-}
+import { stamped, triggerDownload } from './download'
 
 /** Rows of plain objects → CSV download. Column order follows `headers`. */
 export function downloadCsv<T extends Record<string, unknown>>(
@@ -47,11 +37,6 @@ export function downloadCsv<T extends Record<string, unknown>>(
     // CRLF: the consumers here are Excel and xMart tooling on Windows.
     { newline: '\r\n' },
   )
-  triggerDownload(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), stamped(filenameStem, 'csv'))
-}
-
-/** Raw CSV text → download, for the Annex 3 retrieval simulator. */
-export function downloadCsvText(csv: string, filenameStem: string): void {
   triggerDownload(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), stamped(filenameStem, 'csv'))
 }
 
@@ -157,11 +142,6 @@ export function xlsxBlob(sheets: readonly (SheetSpec | GridSheetSpec)[]): Blob {
   return new Blob([out], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
-}
-
-/** Save a blob already in hand — the download link on a completed job. */
-export function downloadBlob(blob: Blob, filename: string): void {
-  triggerDownload(blob, filename)
 }
 
 /* --------------------------------------------------------------------------

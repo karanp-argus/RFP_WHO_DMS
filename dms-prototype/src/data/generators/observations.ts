@@ -77,8 +77,6 @@ interface CountryProfile {
   cheShareDrift: number
   /** General government expenditure as a share of GDP. */
   ggeShare: number
-  /** Government health expenditure as a share of CHE. */
-  gghedShare: number
   /** Population at LAST_YEAR, persons. */
   popAnchor: number
   /** Annual population growth. */
@@ -125,7 +123,6 @@ export function countryProfile(iso3: string): CountryProfile {
     cheShare: range(`chesh|${iso3}`, shLo, shHi),
     cheShareDrift: range(`chedr|${iso3}`, -0.0008, 0.0022),
     ggeShare: range(`ggesh|${iso3}`, 0.16, 0.45),
-    gghedShare: range(`gghed|${iso3}`, 0.15, 0.78),
     popAnchor: pop,
     popGrowth: range(`popg|${iso3}`, -0.002, 0.028),
     exrAnchor,
@@ -165,8 +162,38 @@ function macroValue(iso3: string, year: number, code: string): number | null {
     case 'PPP':
       return p.exrAnchor * Math.pow(1 + p.exrDrift * 0.6, t) * range(`ppp|${iso3}`, 0.3, 0.9)
     case 'GGHE-D': {
-      const che = cheTotal(iso3, year)
-      return che == null ? null : che * p.gghedShare * wob
+      /**
+       * GGHE-D comes **out of the FS partition**, it is not an independent
+       * share of CHE.
+       *
+       * SHA 2011 splits revenues of financing schemes into eight FS leaves.
+       * Three of the seeded indicators carve that partition up between them:
+       *
+       *   GGHE-D  = FS.1 + FS.3                      (domestic government)
+       *   PVT-D   = FS.4 + FS.5 + FS.6 + FS.nec      (domestic private)
+       *   EXT     = FS.2 + FS.7                      (external)
+       *
+       * so `GGHE-D%CHE + PVT-D%CHE + EXT%CHE` must land near 100. Drawing
+       * GGHE-D as its own share of CHE — which is what the first cut did —
+       * left Canada 2022 at 49.2 + 66.1 + 0.5 = 116%. The engine and the
+       * arithmetic were both right; the two generator paths simply were not
+       * tied together, and an HA economist reads that line first.
+       *
+       * Deriving it from the same leaves closes the identity. What remains is
+       * the *intended* discrepancy: CHE sums the HF partition and this sums
+       * the FS one, and `dimensionCoverage` gives each an independent 94–101%
+       * of the underlying total, so the three shares reconcile to roughly
+       * 93–107% rather than exactly 100. Real HA submissions do not reconcile
+       * perfectly either, and the QC between-category rules need genuine small
+       * discrepancies to sit on top of the planted ones.
+       *
+       * `derivedValue` rather than `leafValue`, so a defect planted on FS.1 or
+       * FS.3 would show through in the aggregate the way a real one would.
+       */
+      const fs1 = derivedValue(iso3, year, 'FS.1')
+      const fs3 = derivedValue(iso3, year, 'FS.3')
+      if (fs1 == null && fs3 == null) return null
+      return (fs1 ?? 0) + (fs3 ?? 0)
     }
     default:
       return null
@@ -273,6 +300,68 @@ const OOP_MULTIPLIER: Record<WbIncome, [number, number]> = {
   LIC: [1.0, 1.5],
 }
 
+/**
+ * The two FS leaves that make up GGHE-D — government domestic revenue (`FS.1`)
+ * and social insurance contributions (`FS.3`).
+ */
+const GOV_REVENUE_CODES: ReadonlySet<string> = new Set(['FS.1', 'FS.3'])
+
+/** The domestic private leaves GGHE-D is sized against — this is PVT-D. */
+const PRIVATE_REVENUE_CODES = ['FS.4', 'FS.5', 'FS.6'] as const
+
+/**
+ * Government revenue as a **ratio to the realised private weights**, by income.
+ *
+ * Not a multiplier on an independent draw. Every leaf here is `U(0.05, 1)`, so
+ * three independent private draws span roughly 0.5–2.1 in total; multiplying an
+ * equally independent government draw on top left France at 31% government and
+ * Japan at 18% — both high-income countries whose real figures are near 80%, and
+ * both plausible demo subjects. Anchoring on the sum the private codes actually
+ * drew turns two independent spreads into one, and the ratio is then the only
+ * thing that varies.
+ *
+ * `r / (1 + r)` is government's share of domestic revenue, so these bands mean
+ * 69–82% (HIC), 52–71% (UMC), 35–57% (LMC), 23–44% (LIC) — before external
+ * financing dilutes the low-income end further, which is what puts LIC near a
+ * quarter of CHE. This is also the mirror of `OOP_MULTIPLIER` and
+ * `EXTERNAL_WEIGHT` above: the three have to move against each other or the
+ * financing picture contradicts itself.
+ */
+const GOV_REVENUE_RATIO: Record<WbIncome, [number, number]> = {
+  HIC: [2.2, 4.5],
+  UMC: [1.1, 2.4],
+  LMC: [0.55, 1.3],
+  LIC: [0.3, 0.8],
+}
+
+/**
+ * Weight of one government revenue leaf.
+ *
+ * `FS.1` is always reported, so it carries the whole government total whenever a
+ * country does not report social insurance separately — otherwise a tax-funded
+ * system would lose most of its government spending to sparsity. The split
+ * between the two is a country trait: tax-funded systems sit near the `FS.1` end,
+ * contribution-funded ones near `FS.3`.
+ */
+function govRevenueWeight(iso3: string, code: string): number {
+  const income = COUNTRY_BY_ISO3.get(iso3)?.GRP_WB_INCOME ?? 'LMC'
+  const [lo, hi] = GOV_REVENUE_RATIO[income]
+
+  let privateSum = 0
+  for (const c of PRIVATE_REVENUE_CODES) {
+    if (reportsCode(iso3, c)) privateSum += rawWeight(iso3, c)
+  }
+  // A country reporting none of the private leaves still needs a government
+  // total; fall back to the mean of the private band.
+  if (privateSum <= 0) privateSum = 1.29
+
+  const total = privateSum * range(`govr|${iso3}`, lo, hi)
+  if (!reportsCode(iso3, 'FS.3')) return code === 'FS.1' ? total : 0
+
+  const fs1Share = range(`govsp|${iso3}`, 0.2, 0.85)
+  return code === 'FS.1' ? total * fs1Share : total * (1 - fs1Share)
+}
+
 /** Unnormalised weight of a leaf within its dimension. */
 function rawWeight(iso3: string, code: string): number {
   // Residuals are small by definition — `X.nec` must never be a main category.
@@ -283,6 +372,10 @@ function rawWeight(iso3: string, code: string): number {
     const [lo, hi] = EXTERNAL_WEIGHT[income]
     return range(`ext|${iso3}|${code}`, lo, hi)
   }
+
+  // Sized against the private leaves rather than drawn independently, so that
+  // GGHE-D reconciles against PVT-D and EXT. See `GOV_REVENUE_RATIO`.
+  if (GOV_REVENUE_CODES.has(code)) return govRevenueWeight(iso3, code)
 
   const base = range(`sh|${iso3}|${code}`, 0.05, 1.0)
   // Deeper codes are smaller — a level-3 category is a slice of a level-2 one.

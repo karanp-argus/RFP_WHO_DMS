@@ -9,6 +9,15 @@
  * Every band is a token with an alpha, never a colour: the palette has to
  * follow the theme, and pass/warn/fail already carry the right semantics in
  * both.
+ *
+ * **The alphas are chosen for luminance separation, not for saturation.** The
+ * first set (`fail/55`, `warn/60`) put red and amber within 1.02:1 of each other
+ * in the light theme — different hues, near-identical brightness, so the cliff
+ * between "sparse" and "almost complete" disappeared for anyone reading the grid
+ * by lightness, which is most people scanning a 194-row table. The ladder below
+ * keeps every consecutive pair at ≥1.36:1 light and ≥1.48:1 dark, and
+ * `scripts/contrast-audit.mjs` measures all four steps in both themes so a token
+ * change cannot flatten it again.
  */
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -18,10 +27,10 @@ import { cn } from '@/lib/utils'
 
 const BAND_CLASS: Record<ReturnType<typeof completenessBand>, string> = {
   none: 'bg-who-page-bg border border-dashed border-who-border',
-  low: 'bg-who-fail/55',
-  partial: 'bg-who-warn/60',
-  high: 'bg-who-pass/45',
-  full: 'bg-who-pass/85',
+  low: 'bg-who-fail/85',
+  partial: 'bg-who-warn/50',
+  high: 'bg-who-pass/30',
+  full: 'bg-who-pass/75',
 }
 
 const BAND_LABEL: Record<ReturnType<typeof completenessBand>, string> = {

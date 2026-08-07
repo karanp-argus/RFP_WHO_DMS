@@ -20,38 +20,40 @@ async function shot(name, locator, opts = {}) {
   await page.screenshot({ path: `${OUT}/${name}.png`, ...opts })
 }
 
-// --- Contrast maths (WCAG 2.1) ---
-const CONTRAST = `
+/**
+ * Token values as the *browser* resolves them.
+ *
+ * The ratio table moved to `scripts/contrast-audit.mjs` at Phase 8 — it reads
+ * `globals.css` directly, needs no server, and covers 52 pairs including the
+ * alpha tints Phases 5–7 draw with. Duplicating the pair list here would create
+ * a second source of truth that could only drift.
+ *
+ * What is left is the one thing only a browser can answer: whether the values
+ * that actually reach the page are the values in the file. Tailwind v4's
+ * `@theme inline`, the `.dark` class and the shadcn `--primary`-style aliases all
+ * sit between the two, and a broken link there resolves to *nothing* rather than
+ * to an error — an undefined `var()` drops the declaration silently. So this
+ * reports the resolved values and the audit script checks their ratios.
+ */
+const RESOLVED = `
 (() => {
-  const lin = (c) => { c /= 255; return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4) }
-  const lum = ([r,g,b]) => 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b)
-  const parse = (s) => { const m = s.match(/-?[\\d.]+/g).map(Number); return [m[0],m[1],m[2]] }
-  const ratio = (a,b) => { const l1=lum(a), l2=lum(b); const [hi,lo]=l1>l2?[l1,l2]:[l2,l1]; return (hi+0.05)/(lo+0.05) }
-  const cs = getComputedStyle(document.documentElement)
-  const v = (n) => cs.getPropertyValue(n).trim()
   const probe = document.createElement('div'); document.body.appendChild(probe)
-  const resolve = (token) => { probe.style.color = 'var(' + token + ')'; return parse(getComputedStyle(probe).color) }
-  const pairs = [
-    ['body text on canvas',        '--who-text',        '--who-page-bg'],
-    ['body text on surface',       '--who-text',        '--who-surface'],
-    ['heading on surface',         '--who-heading',     '--who-surface'],
-    ['muted text on surface',      '--who-text-muted',  '--who-surface'],
-    ['muted text on canvas',       '--who-text-muted',  '--who-page-bg'],
-    ['hint on surface',            '--who-hint',        '--who-surface'],
-    ['icon on surface',            '--who-icon',        '--who-surface'],
-    ['sidebar label on sidebar',   '--who-on-brand',    '--who-sidebar'],
-    ['sidebar label on hover',     '--who-on-brand',    '--who-sidebar-hover'],
-    ['sidebar label on logo blk',  '--who-on-brand',    '--who-sidebar-logo'],
-    ['active border on sidebar',   '--who-sidebar-accent','--who-sidebar'],
-    ['button text on brand',       '--who-on-brand',    '--who-brand'],
-    ['accent blue on surface',     '--who-primary-blue','--who-surface'],
-    ['formula text on value cell', '--who-cell-formula','--who-cell-value'],
-    ['body text on indicator cell','--who-text',        '--who-cell-indicator'],
-    ['pass on surface',            '--who-pass',        '--who-surface'],
-    ['warn on surface',            '--who-warn',        '--who-surface'],
-    ['fail on surface',            '--who-fail',        '--who-surface'],
+  const hex = (s) => {
+    const [r,g,b] = s.match(/-?[\\d.]+/g).map(Number)
+    return '#' + [r,g,b].map(v => Math.round(v).toString(16).padStart(2,'0')).join('')
+  }
+  const tokens = [
+    '--who-text', '--who-heading', '--who-text-muted', '--who-page-bg', '--who-surface',
+    '--who-sidebar', '--who-brand', '--who-primary-blue', '--who-accent-subtle',
+    '--who-cell-value', '--who-cell-indicator', '--who-cell-formula',
+    '--who-pass', '--who-warn', '--who-fail',
   ]
-  const out = pairs.map(([label, fg, bg]) => ({ label, ratio: +ratio(resolve(fg), resolve(bg)).toFixed(2) }))
+  // Also probe two shadcn aliases, which are the ones that fail silently.
+  const aliases = ['--primary', '--destructive', '--ring', '--accent']
+  const read = (t) => { probe.style.color = 'var(' + t + ', magenta)'; return hex(getComputedStyle(probe).color) }
+  const out = { tokens: {}, aliases: {} }
+  for (const t of tokens) out.tokens[t] = read(t)
+  for (const a of aliases) out.aliases[a] = read(a)
   probe.remove()
   return out
 })()
@@ -80,16 +82,24 @@ for (const theme of ['light', 'dark']) {
   await shot(`menu-${theme}`, null)
   await page.keyboard.press('Escape')
 
-  // Contrast audit
-  const results = await page.evaluate(CONTRAST)
-  const fails = results.filter((r) => r.ratio < 4.5)
-  const nonText = new Set(['active border on sidebar', 'icon on surface'])
-  for (const r of results) {
-    const target = nonText.has(r.label) ? 3.0 : 4.5
-    const mark = r.ratio >= target ? 'PASS' : r.ratio >= 3.0 ? 'AA-LARGE' : 'FAIL'
-    console.log(`  ${mark.padEnd(9)} ${r.ratio.toFixed(2).padStart(6)}  ${r.label}`)
+  // Resolved token values, and the shadcn aliases that fail silently.
+  const { tokens, aliases } = await page.evaluate(RESOLVED)
+  const unresolved = [...Object.entries(tokens), ...Object.entries(aliases)].filter(
+    ([, v]) => v === '#ff00ff',
+  )
+  for (const [name, value] of Object.entries(tokens)) {
+    console.log(`  ${value}  ${name}`)
   }
-  console.log(`  → ${fails.length} pair(s) under 4.5:1`)
+  for (const [name, value] of Object.entries(aliases)) {
+    console.log(`  ${value}  ${name}  (shadcn alias)`)
+  }
+  if (unresolved.length) {
+    errors.push(
+      `[${theme}] ${unresolved.length} token(s) resolved to the magenta fallback — ` +
+        `the var() chain is broken for: ${unresolved.map(([n]) => n).join(', ')}`,
+    )
+  }
+  console.log('  → ratios: run `npm run audit:contrast` (52 pairs, no browser needed)')
 }
 
 // Toggle round-trip: light → dark via the menu, and it persists

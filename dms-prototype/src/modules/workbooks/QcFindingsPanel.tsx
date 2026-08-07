@@ -28,6 +28,7 @@ import {
 import { QC_RULE_TYPE_LABELS, type QcFinding, type QcRunSummary } from '@/domain/qc'
 import { RuleOriginBadge, SeverityBadge } from '@/modules/quality/QcBadges'
 import { formatDeviation } from '@/modules/quality/FindingsTable'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { cn } from '@/lib/utils'
 
 export interface QcFindingsPanelProps {
@@ -50,6 +51,10 @@ export function QcFindingsPanel({
 }: QcFindingsPanelProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [severity, setSeverity] = useState<string>('all')
+
+  // Phase 8 item 3: Esc closes every drawer and panel. This one is not a Radix
+  // portal — it is a sibling of the grid — so it does not get it for free.
+  useEscapeKey(true, onClose)
 
   const shown = useMemo(
     () => (severity === 'all' ? findings : findings.filter((f) => f.severity === severity)),

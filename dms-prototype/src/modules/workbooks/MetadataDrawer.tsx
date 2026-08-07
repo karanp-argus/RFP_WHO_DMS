@@ -53,6 +53,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { MetadataFieldCode } from '@/domain/constants'
 import type { MetadataFieldDef, ObservationMetadata } from '@/domain/types'
 import type { WorkbookCell } from '@/hooks/useWorkbookData'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatValue } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -113,6 +114,23 @@ export function MetadataDrawer({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
+
+  /**
+   * Esc closes the drawer (Phase 8 item 3) — but **not** while an edit is
+   * pending. This panel is not a Radix portal, so it does not get Esc for free;
+   * and unlike a dialog, closing it with a half-typed comment in a textarea
+   * throws the comment away with no warning. One Esc reverts the draft, a second
+   * closes. `useEscapeKey`'s `enabled` flag is why that decision lives here
+   * rather than in the hook.
+   */
+  useEscapeKey(open, () => {
+    if (dirty) {
+      setDraft(cell?.observation?.metadata ?? {})
+      setDirty(false)
+      return
+    }
+    onClose()
+  })
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event

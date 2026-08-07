@@ -19,12 +19,36 @@ records what each dependency is for, which version is installed, and — where i
 functionality.
 
 All versions below were read from `node_modules` on **6 August 2026** (the resolved version,
-not the declared range). Verify with:
+not the declared range), and re-verified at Phase 8 on **7 August 2026**. Verify with:
 
 ```bash
 cd dms-prototype
 npm ls --depth=0
 ```
+
+**Phase 8 change log — the only dependency movement since Phase 2.** Three packages **removed**,
+nothing added, nothing upgraded:
+
+| Package | From | To | Why |
+|---|---|---|---|
+| `date-fns` | 4.4.0 | **removed** | Never imported. Timestamps derive from `DEMO_NOW` with plain `Date` arithmetic. |
+| `nanoid` | 6.0.1 | **removed** | Never imported. Ids come from the seeded hash; `nanoid` would break run-to-run reproducibility. |
+| `@faker-js/faker` | 10.5.0 | **removed** | Never imported. Seeds are curated or hash-derived, for the same reason. |
+
+Closes handover item 1 — see §7.3. `nanoid@3.3.17` stays in the tree as a transitive dependency
+of `postcss` (via `shadcn`); that is not the package that was removed. Gates re-run after the
+removal: `npx tsc -b` clean · 413 tests passing · `npm run build` clean.
+
+Phase 8 also added five npm **scripts**, and no packages for them — every one is `node` plus what
+was already installed:
+
+| Script | What it is |
+|---|---|
+| `npm run audit:contrast` | WCAG 2.1 over 52 token pairs × 2 themes, parsing `globals.css` directly. **No browser, no server.** Exits non-zero on a new failure *or* on a documented shortfall getting worse. |
+| `npm run audit:bundle` | Critical-path budget and route-split regression guard. Node builtins only (`fs`, `zlib`). |
+| `npm run serve:dist` | Zero-dependency static server with SPA fallback, for demoing the built bundle. Node builtins only. |
+| `npm run verify:keyboard` | 32 checks. Uses the already-installed `playwright`. |
+| `npm run verify:responsive` | 123 checks across 5 widths × 2 themes. Same. |
 
 ---
 
@@ -102,8 +126,8 @@ these versions, the ranges are.
 | `papaparse` | 5.5.4 | CSV read/write. Annex 3 makes CSV the mandatory interchange format ("CSV is 1/3 the size of json and by definition tabular"). |
 | `@types/papaparse` | 5.5.2 | Papa ships no types. |
 | `recharts` | 3.10.1 | Current major. Not yet imported — Phase 5 (QC outlier scatter), Phase 7 (dashboard). |
-| `date-fns` | 4.4.0 | Not yet imported. All current timestamp handling derives from `DEMO_NOW` with plain `Date` arithmetic; keep it unless a real formatting need appears. |
-| `nanoid` | 6.0.1 | Not yet imported. Seeded ids come from the deterministic hash instead — `nanoid` would break run-to-run reproducibility if used for anything data-bearing. Candidate for removal. |
+| ~~`date-fns`~~ | **removed at Phase 8** (was 4.4.0) | Never imported. All timestamp handling derives from `DEMO_NOW` with plain `Date` arithmetic. |
+| ~~`nanoid`~~ | **removed at Phase 8** (was 6.0.1) | Never imported. Seeded ids come from the deterministic hash — `nanoid` would have broken run-to-run reproducibility if it had ever been used for anything data-bearing. |
 
 ### UI
 
@@ -135,7 +159,7 @@ these versions, the ranges are.
 | `@types/node` | 24.13.3 | For `node:path` in `vite.config.ts`. |
 | `@types/react` / `@types/react-dom` | 19.2.18 / 19.2.4 | Track React 19. |
 | `playwright` | 1.62.1 | Drives the four `npm run verify:*` browser checks in `scripts/`. The bare `playwright` package, not `@playwright/test` — these are plain Node scripts asserting via console output, not a test-runner suite, because they are diagnostic harnesses rather than CI gates. Added at handover (6 Aug 2026); previously run from a temp scratchpad that had its own install, so the scripts could not have run on a colleague's machine. Requires a one-off `npx playwright install chromium`. |
-| `@faker-js/faker` | 10.5.0 | Not yet imported, and **may never be**. Phase 1 seeds are curated or hash-derived because faker output is not reproducible across runs. Candidate for removal. |
+| ~~`@faker-js/faker`~~ | **removed at Phase 8** (was 10.5.0) | Never imported. Phase 1 seeds are curated or hash-derived because faker output is not reproducible across runs, which is the property the whole demo rests on. |
 
 ---
 
@@ -284,16 +308,27 @@ mounting `ThemeProvider` and promoting `next-themes` to an explicit dependency.
 *Lesson worth keeping:* a generated shadcn component can import a package the project never
 declared. When adding components, check what they pull in.
 
-### 7.3 Installed but unused — decide before handover
+### 7.3 ~~Installed but unused~~ — RESOLVED at Phase 8
 
-`react-datasheet-grid` is now imported by the workbook (Phase 4), and `@tanstack/react-virtual`
-arrives with it as DSG's own virtualisation engine. `recharts` and `react-resizable-panels`
-are still planned for Phases 5–7, so they stay.
+`react-datasheet-grid` is imported by the workbook (Phase 4), and `@tanstack/react-virtual`
+arrives with it as DSG's own virtualisation engine. `recharts` is imported by the QC outlier
+scatter (Phase 5) and `react-resizable-panels` by a generated shadcn component.
 
-`date-fns`, `nanoid` and `@faker-js/faker` are **not imported anywhere** and may not be
-needed at all — seeded data is hash-derived for reproducibility, ids come from the same
-hash, and timestamps derive from `DEMO_NOW`. Review at Phase 8 and remove if still unused,
-so the handover dependency list reflects what the code actually uses.
+**`date-fns`, `nanoid` and `@faker-js/faker` were never imported by any file and were removed
+at Phase 8** — verified with a repo-wide search over `src/`, `scripts/`, `index.html` and
+`vite.config.ts` before removing, and with `npm ls` to confirm nothing else depended on them:
+
+```bash
+npm uninstall date-fns nanoid @faker-js/faker
+```
+
+`nanoid@3.3.17` remains in the tree as a transitive dependency of `postcss` (via `shadcn`).
+That is expected and is not the package that was removed — the removed one was the top-level
+`nanoid@6`.
+
+All three gates were re-run after the removal: `npx tsc -b` clean, 413 tests passing,
+`npm run build` clean. **The dependency register now matches what the code imports**, which was
+the point of the item.
 
 ---
 

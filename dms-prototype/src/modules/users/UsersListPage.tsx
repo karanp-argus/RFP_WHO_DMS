@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { MoreVertical, RotateCcw, ShieldCheck, SlidersHorizontal, UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -101,11 +102,30 @@ export function UsersListPage() {
   function change(id: string, c: Parameters<typeof applyUserChange>[2]) {
     const outcome = applyUserChange(directory, id, c)
     if (!outcome.ok) {
+      // The refusal is an inline alert, not a toast: UC010's last-administrator
+      // guard is a *rule about the directory*, and it has to stay on screen next
+      // to the control that tried to break it rather than fade after four
+      // seconds.
       setProblem(outcome.problem)
       return
     }
     setProblem(null)
     saveUser(outcome.user)
+    // The success does toast. An inline select changing from "Administrator" to
+    // "Regular user" is a two-word visual change in a table of thirty rows, and
+    // it is the change that decides what that person can do.
+    const u = outcome.user
+    toast.success(
+      c.kind === 'role'
+        ? `${u.displayName} is now ${u.role === 'administrator' ? 'an administrator' : 'a regular user'}.`
+        : c.kind === 'enable'
+          ? `${u.displayName} re-enabled.`
+          : c.kind === 'disable'
+            ? `${u.displayName} disabled — the account is retained, per UC012.`
+            : c.kind === 'countries'
+              ? `Country access updated for ${u.displayName}.`
+              : `${u.displayName} updated.`,
+    )
   }
 
   const columns = useMemo<ColumnDef<DmsUser, unknown>[]>(
