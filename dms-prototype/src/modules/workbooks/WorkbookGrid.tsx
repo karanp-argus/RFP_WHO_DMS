@@ -33,6 +33,8 @@ import { WorkbookGridContext, type WorkbookGridContextValue } from './gridContex
 /** Geometry. The label column matches the sidebar's 260px so the two align. */
 const LABEL_COLUMN_WIDTH = 260
 const YEAR_COLUMN_WIDTH = 96
+/** Ceiling for a grown column — see `grow` in dsgColumns. */
+const COLUMN_MAX_WIDTH = 240
 const ROW_HEIGHT = 34
 const HEADER_HEIGHT = 36
 
@@ -115,10 +117,26 @@ export function WorkbookGrid({
     () =>
       columns.map((column) => ({
         id: column.key,
-        title: column.label,
+        // A ReactNode, not the bare string, so the full label survives as a
+        // tooltip once the header truncates it. "Democratic People's Republic
+        // of Korea" does not fit any sane column width.
+        title: (
+          <span className="block w-full truncate" title={column.label}>
+            {column.label}
+          </span>
+        ),
         basis: YEAR_COLUMN_WIDTH,
         minWidth: YEAR_COLUMN_WIDTH,
-        grow: 0,
+        // grow, not the previous 0. With fixed widths a short selection left
+        // the columns huddled at the left of a full-width container, and the
+        // leftover was still wrapped in the grid's border — the "extended
+        // header". Growing spends that space on the columns instead, which
+        // also buys the header room for a country name. Capped so a one- or
+        // two-column workbook does not stretch a single column across the
+        // viewport; shrink stays 0 so a 25-year axis scrolls rather than
+        // crushing.
+        grow: 1,
+        maxWidth: COLUMN_MAX_WIDTH,
         shrink: 0,
         columnData: { columnKey: column.key },
         component: WorkbookCellComponent as Column<DsgRow, { columnKey: string }, string>['component'],

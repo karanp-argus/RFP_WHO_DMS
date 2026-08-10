@@ -453,10 +453,35 @@
   font-weight: 600;
 }
 
+/* DSG's header container sets only `padding` and `line-height`, so a long
+   title wraps and spills out of the fixed 36px header row — a country name
+   like "Democratic People's Republic of Korea" ran to four clipped lines.
+   One line, ellipsis, full text on hover via the title attribute the column
+   supplies. Here rather than in the component so it also covers the gutter
+   and any future label. */
+.dms-workbook-grid .dsg-cell-header-container {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The canvas beyond the last column and below the last row. DSG leaves it
    transparent and inherits whatever is behind, which in dark mode was the
-   browser's white default rather than the page. */
+   browser's white default rather than the page.
+
+   `color` matters as much as `background` here. DSG hardcodes `color: black` on
+   .dsg-container with no custom property to override it — unlike its border,
+   background and header-text colours, which are all themeable. Cell renderers
+   set a colour only in the special cases (formula → --who-cell-formula, empty →
+   --who-text-muted), so an ordinary populated cell set none and inherited that
+   black. Legible in light, near-invisible on --who-cell-value in dark.
+
+   Fixed on the container rather than in the renderer so it covers everything
+   DSG draws, and because inheritance is the weakest cascade source: the
+   renderer's own text-* utilities still win on the cells that have them. */
 .dms-workbook-grid,
 .dms-workbook-grid .dsg-container {
   background: var(--who-page-bg);
+  color: var(--who-text);
 }
