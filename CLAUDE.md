@@ -284,6 +284,35 @@ token somewhere new, add the pair to `scripts/contrast-audit.mjs`.
   built it for UC042; Phase 7's notification module adds senders and configuration around
   it, not a second store.
 
+## UC041 multilanguage reports — three rules
+
+All six WHO languages are translated (`src/data/seed/translations/`, one module per language,
+178 variable labels each). The full reasoning is PROTOTYPE_PLAN §9; these three are the ones
+that break something if ignored.
+
+- **Never import a language pack statically.** `loadReportVocabulary` uses a literal `switch`
+  of dynamic `import()`s so each pack is its own lazy chunk. The English seed is reached from
+  `mockClient`, which `index.html` references directly — a static import would put ~100 kB of
+  labels on the sign-in screen and trip `audit:bundle`, which has ~24 kB of headroom. A
+  template import (`import('./' + lang)`) is equally wrong: it becomes a glob and loads all
+  five to serve one.
+- **Translate labels, never keys.** `unitOf()` returns `UNITS.NCU_MILLIONS` verbatim in every
+  language because `presentValue` compares against that exact string to decide convertibility,
+  and a pivot cell compares against it to refuse a total that mixed pesos and yen. Translating
+  it stops the mixed-currency guard comparing like with like, and the report starts adding
+  currencies together silently as soon as somebody picks French. Units, `fieldKey` results and
+  saved filter values stay canonical English; translation happens at the edge, through
+  `translateUnit` / `fieldHeading` / `variableLabel`.
+- **The vocabulary travels on the `PivotTable`, and consumers read it from there.** A viewer
+  that chose its own would render a French table with an English "Grand total" on the last
+  line. `PivotTableView` and `exportReport` read `table.vocabulary` and nothing else — never
+  `REPORT_FIELD_DEFS[...].label` or `REPORT_AGGREGATION_LABELS` directly.
+
+Adding a variable or a formula to the seed means adding a line to all five packs;
+`translations.test.ts` names the language and the code that is missing. **Arabic is
+labels-only** — the grid is not mirrored, and the run page states that when Arabic is selected.
+Do not promote it to "full RTL support" anywhere in the docs.
+
 ## Users, permissions and notifications (Phase 7)
 
 - **There is no `deleteUser`, and there must never be one.** UC012 disables rather than

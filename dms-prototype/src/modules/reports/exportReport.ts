@@ -14,14 +14,21 @@
  * zero — the formula engine goes to some trouble to keep that distinction and
  * losing it at the last step, in the artefact that leaves the building, would
  * be the worst place to lose it.
+ *
+ * **Both sheets are written in the report's language (UC041)** — the sheet tabs
+ * included, since a French report whose tabs say `Report` and `About` is a
+ * translated grid in an English workbook. The vocabulary travels on the table
+ * rather than being passed alongside it, so an export cannot disagree with the
+ * pivot it was built from. Field *values* stay as registered: country and
+ * currency names, the report's own name and its authored description.
  */
 
 import {
   describePresentation,
+  fieldHeading,
+  fillTemplate,
   pivotToGrid,
-  REPORT_AGGREGATION_LABELS,
-  REPORT_UNIT_LABELS,
-  scaleWord,
+  translateUnit,
   type PivotTable,
   type ReportDefinition,
   type ReportRunParameters,
@@ -58,7 +65,7 @@ function reportSheet(context: ReportExportContext): GridSheetSpec {
     i < grid.leadingColumns ? 34 : 16,
   )
   return {
-    name: 'Report',
+    name: context.table.vocabulary.chrome.sheetReport,
     aoa: [...grid.headerRows, ...grid.bodyRows],
     widths,
     numberFormat: numberFormatFor(context.parameters.presentation.decimals),
@@ -67,63 +74,87 @@ function reportSheet(context: ReportExportContext): GridSheetSpec {
 
 function aboutSheet(context: ReportExportContext): SheetSpec {
   const { definition, parameters, table } = context
+  const vocabulary = table.vocabulary
+  const c = vocabulary.chrome
+
+  // The two column headers double as the record keys, so they have to be read
+  // from the same place the sheet spec reads them.
+  const field = c.aboutFieldColumn
+  const value = c.aboutValueColumn
+  const row = (k: string, v: unknown): Record<string, unknown> => ({ [field]: k, [value]: v })
+
   const rows: Record<string, unknown>[] = [
-    { Field: 'Report', Value: definition.name },
-    { Field: 'Description', Value: definition.description },
-    { Field: 'Run by', Value: context.runBy },
-    { Field: 'Run at (UTC)', Value: context.runUtc },
-    {
-      Field: 'Countries',
-      Value: context.iso3
+    row(c.aboutReport, definition.name),
+    row(c.aboutDescription, definition.description),
+    row(c.aboutRunBy, context.runBy),
+    row(c.aboutRunAt, context.runUtc),
+    row(
+      c.aboutCountries,
+      context.iso3
         ? `${context.countryName ?? context.iso3} (${context.iso3})`
-        : parameters.countries.join(', ') || 'All in scope',
-    },
-    { Field: 'Years', Value: `${parameters.yearFrom}–${parameters.yearTo}` },
-    { Field: 'Variables', Value: parameters.variables.join(', ') || 'All in scope' },
-    { Field: 'Unit', Value: REPORT_UNIT_LABELS[parameters.presentation.unit] },
-    { Field: 'Scale', Value: scaleWord(parameters.presentation.scale) },
-    { Field: 'Labels language', Value: WHO_LANGUAGE_LABELS[parameters.language] },
-    {
-      Field: 'Rows',
-      Value:
-        definition.rows
-          .map((p) => `${p.field}${p.subtotal ? ' (with subtotal)' : ''}`)
-          .join(' › ') || '—',
-    },
-    { Field: 'Columns', Value: definition.columns.map((p) => p.field).join(' › ') || '—' },
-    {
-      Field: 'Values',
-      Value: definition.values
-        .map((v) => `${v.label} (${REPORT_AGGREGATION_LABELS[v.aggregation]})`)
+        : parameters.countries.join(', ') || c.allInScope,
+    ),
+    row(c.aboutYears, `${parameters.yearFrom}–${parameters.yearTo}`),
+    row(c.aboutVariables, parameters.variables.join(', ') || c.allInScope),
+    row(c.aboutUnit, vocabulary.reportUnits[parameters.presentation.unit]),
+    row(c.aboutScale, vocabulary.scales[parameters.presentation.scale]),
+    // Named in English as well as in the report's language: whoever receives the
+    // file may not read the language it was produced in.
+    row(c.aboutLanguage, WHO_LANGUAGE_LABELS[parameters.language]),
+    row(
+      c.aboutRows,
+      definition.rows
+        .map(
+          (p) =>
+            `${fieldHeading(p.field, vocabulary)}${p.subtotal ? ` (${c.withSubtotal})` : ''}`,
+        )
+        .join(' › ') || c.emptyValue,
+    ),
+    row(
+      c.aboutColumns,
+      definition.columns.map((p) => fieldHeading(p.field, vocabulary)).join(' › ') ||
+        c.emptyValue,
+    ),
+    row(
+      c.aboutValues,
+      definition.values
+        .map((v) => `${v.label} (${vocabulary.aggregations[v.aggregation]})`)
         .join(', '),
-    },
-    {
-      Field: 'Filters',
-      Value:
-        definition.filters
-          .map((f) => `${f.field} ${f.exclude ? 'not in' : 'in'} [${f.values.join(', ')}]`)
-          .join('; ') || 'None',
-    },
-    { Field: 'Grand total', Value: definition.grandTotal ? 'Yes' : 'No' },
-    { Field: 'Combinations read', Value: table.coordinatesRead },
-    { Field: 'Combinations after filters', Value: table.coordinatesIncluded },
-    { Field: 'Values found', Value: table.valuesRead },
-    { Field: 'Units in the table', Value: table.units.join(', ') || '—' },
+    ),
+    row(
+      c.aboutFilters,
+      definition.filters
+        .map(
+          (f) =>
+            `${fieldHeading(f.field, vocabulary)} ${f.exclude ? c.filterNotIn : c.filterIn} [${f.values.join(', ')}]`,
+        )
+        .join('; ') || c.none,
+    ),
+    row(c.aboutGrandTotal, definition.grandTotal ? c.yes : c.no),
+    row(c.aboutCombinationsRead, table.coordinatesRead),
+    row(c.aboutCombinationsFiltered, table.coordinatesIncluded),
+    row(c.aboutValuesFound, table.valuesRead),
+    row(
+      c.aboutUnitsInTable,
+      table.units.map((u) => translateUnit(u, vocabulary)).join(', ') || c.emptyValue,
+    ),
   ]
 
   // Never hidden: a report that quietly stopped short is the one case where the
   // file looks complete and is not.
   if (table.unconverted > 0) {
-    rows.push({
-      Field: 'Not converted',
-      Value: `${table.unconverted} value(s) had no exchange rate for their country and year and are left out of the totals.`,
-    })
+    rows.push(
+      row(
+        c.aboutNotConverted,
+        fillTemplate(c.notConvertedTemplate, { count: String(table.unconverted) }),
+      ),
+    )
   }
   if (table.truncated) {
-    rows.push({ Field: 'Truncated', Value: table.truncationNote ?? 'Yes' })
+    rows.push(row(c.aboutTruncated, table.truncationNote ?? c.yes))
   }
 
-  return { name: 'About', headers: ['Field', 'Value'], rows }
+  return { name: c.sheetAbout, headers: [field, value], rows }
 }
 
 export function reportSheets(context: ReportExportContext): (GridSheetSpec | SheetSpec)[] {

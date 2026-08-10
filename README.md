@@ -20,9 +20,9 @@ a pivot, flip a permission and watch the controls disappear.
 | **Pilot use cases demonstrable here** | **40 of 41** — 35 fully, 5 with a stated limit. The 41st, UC061 *Phased implementation*, is a delivery plan answered by the proposal rather than by software ([§5](#5-use-case-coverage)) |
 | **Non-Pilot (N) use cases covered as a bonus** | **13** fully, 7 partial, 3 not built — 23 of 23 accounted for |
 | **Annex 3 API requirements** | 10 of 10 mandatory on one screen — 8 live, 2 stated as design commitments |
-| **Unit tests** | 413 |
-| **Browser verification checks** | 386 asserted, across 7 harnesses (4 more report values rather than assert) |
-| **First-paint transfer** | 225 kB gzipped (was 636 kB before the Phase 8 route split) |
+| **Unit tests** | 479 |
+| **Browser verification checks** | 393 asserted, across 7 harnesses (4 more report values rather than assert) |
+| **First-paint transfer** | 226 kB gzipped (was 636 kB before the Phase 8 route split). The five UC041 language packs are lazy chunks of 4–5 kB gzipped each and reach the browser only when a report is run in that language |
 
 ---
 
@@ -287,7 +287,7 @@ commitment" means it is described in the proposal and deliberately not faked her
 | **OAuth 2.0 on the retrieval API** | No server exists to hold a token endpoint. Marked `design` on the Annex 3 evidence table, never `demonstrated`. |
 | **HTTPS-only transport** | Same. A localhost demo is `http://`, and saying otherwise on screen would be false. |
 | **Server-side virus scanning on import (UC021)** | A browser cannot scan a file. The import flow validates format and schema and says in the UI where the scan would happen. |
-| **Right-to-left layout for Arabic (UC041)** | EN / FR / ES are selectable for report labels; AR / ZH / RU are listed, disabled, and each carries its reason. RTL is a layout project, not a translation table, and it is scoped in the proposal rather than faked. |
+| **Right-to-left layout for Arabic (UC041)** | All six WHO languages now carry seeded label packs, Arabic included, so an Arabic report's headers, classification labels, totals and both Excel sheets are Arabic. The **layout direction is not mirrored** — the grid still runs left to right. That is a layout project (mirrored frozen panes, `dir` on the worksheet), scoped in the proposal; the run page states the limit when Arabic is selected rather than leaving it to a screenshot. |
 | **Persistence of quality-check findings** | A thousand findings per run would fill the same `localStorage` quota the workbook's unsaved edits depend on. Runs are reproducible exactly — the corpus is derived, not sampled — so a reloaded report offers to re-run its scope. Costs a click, not data. |
 | **Persistence of generated report files** | Several megabytes of binary, same quota. The notification persists; if its files have been dropped it says so and offers to re-run. |
 | **Developing inside WHO xMart (UC056)** | Requires the actual xMart tenant. Answered by the live To-Be architecture diagram on `/integration`, which names the components and where the boundary falls. |
@@ -369,7 +369,7 @@ verbatim. Status is the status **in this prototype**:
 | UC038 | Copy a report as the basis for a new one | N | ✅ | Duplicate-as-custom |
 | UC039 | Data tracking reports | **Y** | ✅ | Per-country last-received, series, format, rows, batch |
 | UC040 | User customized list of reports | N | ✅ | Favourites and drag-order, both surviving a reload |
-| UC041 | Multilanguage report | N | ◐ | EN / FR / ES selectable. **AR / ZH / RU listed, disabled, each with its reason** — Arabic needs RTL layout, which is scoped rather than faked |
+| UC041 | Multilanguage report | N | ◐ | All six WHO languages selectable and translated — headers, classification and indicator labels, totals, both Excel sheets and the sheet tabs. **Arabic labels only: the layout is not mirrored right-to-left**, and the run page says so. Field values are untranslated by design, per UC041's own carve-out |
 | UC042 | Export report to Excel format | **Y** | ✅ | Background queue, one real `.xlsx` per country, notification with a working link |
 
 ### Versioning

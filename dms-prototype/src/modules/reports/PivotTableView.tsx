@@ -16,6 +16,11 @@
  * A blank cell renders as an em dash and a cell whose group mixed units renders
  * as a marked refusal rather than as a blank, because the two mean different
  * things and only one of them is the user's problem to fix.
+ *
+ * **Every word in the table comes from `table.vocabulary` (UC041)**, never from
+ * the module constants — the labels were resolved into that language when the
+ * pivot was built, and headers taken from anywhere else would be the one part
+ * of the report still in English.
  */
 
 import { useMemo } from 'react'
@@ -24,8 +29,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { EmptyState } from '@/components/common/EmptyState'
 import { BLANK } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { REPORT_FIELD_DEFS, type PivotAxisNode, type PivotTable } from '@/domain/report'
+import { fieldHeading, type PivotAxisNode, type PivotTable } from '@/domain/report'
 
+/**
+ * Numbers stay in `en-GB` grouping in every language, and deliberately so: the
+ * exported `.xlsx` writes raw numbers under an Excel format string that the
+ * recipient's own locale renders, and a screen that used the report language
+ * while the file used the reader's would show two different separators for the
+ * same figure. UC041 is about labels; number formatting belongs to the viewer.
+ */
 function formatCell(value: number | null, decimals: number): string {
   if (value == null || !Number.isFinite(value)) return BLANK
   return new Intl.NumberFormat('en-GB', {
@@ -38,11 +50,11 @@ function formatCell(value: number | null, decimals: number): string {
  * Axis-header text at one nesting level, matching `pivotToGrid`'s rules so the
  * screen and the exported file say the same thing in the same cells.
  */
-function axisLabelAt(node: PivotAxisNode, level: number): string {
+function axisLabelAt(node: PivotAxisNode, level: number, totalWord: string): string {
   if (node.kind === 'grand-total') return level === 0 ? node.label : ''
   const label = node.pathLabels[level]
   if (label != null) return label
-  return level === node.pathLabels.length && node.kind === 'subtotal' ? 'Total' : ''
+  return level === node.pathLabels.length && node.kind === 'subtotal' ? totalWord : ''
 }
 
 /**
@@ -74,12 +86,14 @@ export function PivotTableView({ table, decimals, maxRows }: PivotTableViewProps
     [table.rows, maxRows],
   )
 
+  const vocabulary = table.vocabulary
+  const totalWord = vocabulary.chrome.total
   const columnLevels = table.columnFields.length
   const showValueRow = table.values.length > 1
   const rowLabelColumns = Math.max(1, table.rowFields.length)
   const rowFieldLabels =
     table.rowFields.length > 0
-      ? table.rowFields.map((p) => REPORT_FIELD_DEFS[p.field].label)
+      ? table.rowFields.map((p) => fieldHeading(p.field, vocabulary))
       : ['']
 
   if (table.columns.length === 0) {
@@ -140,7 +154,9 @@ export function PivotTableView({ table, decimals, maxRows }: PivotTableViewProps
                     )}
                     style={{ top: `${level * HEADER_ROW_HEIGHT}px` }}
                   >
-                    {isValueRow ? column.value.label : axisLabelAt(column.node, level)}
+                    {isValueRow
+                      ? column.value.label
+                      : axisLabelAt(column.node, level, totalWord)}
                   </th>
                 ))}
               </tr>
@@ -171,9 +187,9 @@ export function PivotTableView({ table, decimals, maxRows }: PivotTableViewProps
                         : 'bg-who-surface text-who-text',
                     )}
                     style={{ left: stickyLeft(level), minWidth: LABEL_WIDTH, width: LABEL_WIDTH }}
-                    title={axisLabelAt(row, level)}
+                    title={axisLabelAt(row, level, totalWord)}
                   >
-                    {axisLabelAt(row, level)}
+                    {axisLabelAt(row, level, totalWord)}
                   </th>
                 ))}
 
@@ -195,7 +211,7 @@ export function PivotTableView({ table, decimals, maxRows }: PivotTableViewProps
                           <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-1 text-who-warn">
                               <AlertTriangle className="size-3.5" />
-                              mixed
+                              {vocabulary.chrome.mixed}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">

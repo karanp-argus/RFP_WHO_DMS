@@ -20,7 +20,7 @@ The RFP's payment milestone 1 (20% of contract value, due 1 month after signatur
 | Excel-like Workbook with live formula evaluation | Real xMart API calls (mocked, but with realistic request/response shown in a Dev drawer) |
 | Realistic seeded data: 196 countries, 2000–2024, SHA 2011 classifications | Real Entra ID SSO (mocked login + role switcher) |
 | Quality Check rule engine that actually runs and produces reports | 25M-row performance (we demo virtualisation at ~250k rows and state the scaling story) |
-| Pivot-style report builder + real .xlsx export | Multilanguage report labels beyond EN/FR/ES stubs (UC041 is non-Pilot) |
+| Pivot-style report builder + real .xlsx export | Right-to-left layout for Arabic (UC041's labels are translated in all six WHO languages; mirroring the grid is a layout project) |
 | Versioning: compare + restore up to 10 versions | Notifications module beyond a badge + panel (UC058/059 are non-Pilot) |
 
 **Assumption stated for the record:** we build to *demo depth*, not *pilot depth*. Every Pilot use case is represented by a working screen and a defensible interaction; the persistence layer is `localStorage` + in-memory stores. Where a use case is inherently backend (SSO, locking, API round-trips), we simulate it visibly so the evaluator sees we understood it.
@@ -725,7 +725,7 @@ time. Route-level `React.lazy` remains the Phase 8 packaging task it already was
 4. `ReportRunPage` — parameter prompts, then unit + currency + scale selection (the legacy screenshot's "Millions (Default)"), and a display-on-screen vs download-only choice.
 5. **Background jobs (UC042):** reports flagged heavy, or multi-country runs, enqueue into `reportStore` with a progress bar; on completion push an in-app notification carrying a download link; on failure push an error notification. Multi-country runs produce **one .xlsx per country**, exactly as the FR describes.
 6. `DataTrackingReportPage` (**UC039**) — per-country submission status from the mock xMart import metadata: last received date, series, format (JHAQ / HAQ / Mini / HAPT), row count, batch id.
-7. Language selector stub for report labels — EN / FR / ES populated, AR / ZH / RU listed (**UC041** partial; note the Arabic RTL work in the proposal rather than faking it).
+7. Language selector stub for report labels — EN / FR / ES populated, AR / ZH / RU listed (**UC041** partial; note the Arabic RTL work in the proposal rather than faking it). *Superseded after Phase 8: all six languages are translated — see §9.*
 
 **Done when:** an admin builds a pivot report, saves it, a regular user runs it for 5 countries, and 5 `.xlsx` files arrive via a notification with a working download link. → **UC035, 036, 039, 042** (+ 037, 038, 040, partial 041).
 
@@ -812,6 +812,9 @@ disabled, and each carries the reason — Arabic needs right-to-left layout, whi
 the proposal rather than in a fake dropdown entry. The bundle is now **2.01 MB (610 kB
 gzipped)**, up from 1.92 MB; route-level `React.lazy` remains the Phase 8 packaging task it
 already was.
+
+> **Superseded — see §9.** The deferral above stood for Phases 6–8. All six languages now
+> carry seeded label packs and the only remaining limit is right-to-left *layout*.
 
 ### Phase 7 — Users, Home dashboard, Integration (2 d)
 
@@ -1140,3 +1143,79 @@ has been silently edited is worth nothing to the panel reading it:
 The full row-by-row matrix, with the limit named in every partial row, is
 **[README.md §5](README.md#5-use-case-coverage)** — it is a proposal exhibit and lives where a
 reviewer will open it first.
+
+---
+
+## 9. After Phase 8 — UC041 completed in all six WHO languages
+
+Phase 6 shipped UC041 as a labelled stub and Phase 8 left it there (HANDOVER standing
+trade-off 10). It is now built. A report runs with **headers, classification and indicator
+labels, subtotal and grand-total lines, unit strings, the About sheet and both worksheet tabs**
+in any of English, French, Spanish, Arabic, Chinese or Russian.
+
+**The content is seeded configuration, not code.** `src/data/seed/translations/{fr,es,ru,zh,ar}.ts`
+carry 178 `code|label` lines each — the same compact format `classifications.ts` uses for the
+English original, so a translator can diff the two line for line. Classification labels follow
+the published SHA 2011 terminology in each language rather than a literal rendering of the
+English seed, because an HA focal point reading a French report expects the wording of the
+manual. In a production DMS these are translation attributes on the xMart variable records and
+an administrator maintains them from Setup; the shape here anticipates that.
+
+**Three decisions are load-bearing, and each one exists because the obvious alternative broke
+something:**
+
+1. **Every pack is behind a dynamic `import()`.** `classifications.ts` is reached from
+   `mockClient`, which `index.html` references directly, so inlining five languages of labels
+   would have put ~100 kB of text on the sign-in screen. The critical path was already 225 kB
+   gzipped against a 250 kB budget — `audit:bundle` would have failed. It is now **226 kB**, and
+   the packs are five lazy chunks of 4–5 kB gzipped fetched when a report is run in that
+   language. The loader's `switch` is literal rather than `import('./' + lang)`, because a
+   template gives the bundler a glob and a glob loads all five to satisfy one.
+2. **A key is never translated; only a label is.** `unitOf()` returns
+   `National Currency Unit (NCU) millions` in every language, because that exact string is what
+   `presentValue` compares against to decide whether a figure is convertible, and what a pivot
+   cell compares against to refuse a total that mixed pesos and yen. Translate the key and the
+   mixed-currency guard silently stops firing — the report would start adding currencies together
+   the moment somebody chose French. So units, field keys and filter values stay canonical
+   English and translation happens once, at the edge, in `translateUnit` / `fieldHeading` /
+   `variableLabel`. The composed unit `CAD millions` is decomposed there: the currency code
+   survives untouched and only the scale word moves.
+3. **A pack overrides English; it never replaces it.** Every map is merged over
+   `ENGLISH_VOCABULARY`, so a variable added to the seed after the packs were written — or a
+   custom formula an administrator wrote this morning (UC030) — appears under its English or
+   authored name rather than as a blank row label.
+
+**The vocabulary travels on the `PivotTable`**, not alongside it. A table and its chrome have to
+agree: the axis labels were resolved through the access closure at build time, so a viewer free
+to pick its own vocabulary could render a French table with an English *Grand total* on the last
+line. `PivotTableView` and `exportReport` both read `table.vocabulary` and nothing else.
+
+**What is deliberately not translated**, matching UC041's own carve-out (*"any report displaying
+text as part of the fields values (such as metadata) will not be translated"*): country names,
+currency names, user-authored report names and descriptions, value-field labels, and observation
+metadata. Numbers keep `en-GB` grouping in every language, because the `.xlsx` writes raw numbers
+under a format string the recipient's own locale renders — a screen that used the report language
+while the file used the reader's would show two separators for the same figure.
+
+**The one remaining limit is layout, and it is stated on screen.** Arabic labels are Arabic; the
+grid still runs left to right. Mirroring it is a layout project — mirrored frozen panes, mirrored
+sticky offsets, `dir` on the exported worksheet — and it is scoped in the proposal. Selecting
+Arabic on the run page says so beneath the selector, so nobody discovers it from a screenshot.
+
+**Verification.** `src/data/__tests__/translations.test.ts` — 66 assertions: every pack covers
+every classification and indicator code with no orphans; no blank label and none that fell back
+to a bare code; **every Arabic, Chinese and Russian label contains a non-ASCII character**, which
+is what catches an English line copied into a pack and left untranslated; every template keeps its
+`{placeholder}`; sheet names are legal Excel tabs; and an end-to-end French pivot comes back with
+`Régimes publics`, `Total général` and a canonical-English `CAD millions` unit.
+
+`verify:reports` gains eight checks and drops one, going 51 → **58**: **all six options live with
+none disabled** — the dropped check read the selector's text, and a disabled option reads the same
+as a live one, which is how it passed while half the list was inert — translated row-axis field
+headers, translated OECD grouping values, a French `.xlsx` that actually downloads, the Russian
+subtotal filler `Итого`, French SHA 2011 scheme labels on the report that actually puts variables
+on an axis, the Arabic RTL notice, and Arabic glyphs in the rendered table. Two of those are
+deliberately not asserted in French: the subtotal filler is `Total` in English *and* French, so a
+French assertion could not tell a translated cell from an untranslated one, and `rep-oecd-usd` has
+no `variable` field on either axis so it cannot show a classification label at all. Test count
+413 → **479**, browser checks 386 → **393**.

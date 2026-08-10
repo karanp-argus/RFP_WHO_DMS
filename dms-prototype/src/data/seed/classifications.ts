@@ -346,8 +346,12 @@ function buildVariables(): Variable[] {
         code,
         dimension: spec.code,
         label,
-        // Only English is seeded; the other five WHO languages are report-time
-        // concerns (HLR21/UC041) and fall back to English.
+        // English only, and deliberately so. The other five WHO languages are
+        // seeded in `seed/translations/` and loaded on demand (HLR21/UC041):
+        // this module is reached from `mockClient`, which `index.html`
+        // references directly, so inlining five languages of labels here would
+        // put ~100 kB of text on the sign-in screen and trip `audit:bundle`.
+        // The field stays on the record because that is the shape xMart carries.
         labels: { en: label },
         parentCode: parentOf(code, level),
         level,

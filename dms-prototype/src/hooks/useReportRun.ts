@@ -33,6 +33,7 @@ import {
 } from '@/domain/report'
 import { mockXMartClient } from '@/data/xmart/mockClient'
 import { buildReportAccess, reportFetchCodes } from '@/data/report/reportAccess'
+import { loadReportVocabulary } from '@/data/seed/translations'
 import {
   rememberJobFile,
   useReportStore,
@@ -143,6 +144,12 @@ export function useReportRun(): UseReportRunResult {
    * same reason the workbook does it: `PREV`, `GROWTH` and the interpolation
    * functions read across years, and a report narrowed to 2020–2024 has not
    * asked for its growth indicators to go blank.
+   *
+   * **The UC041 language pack is fetched here too**, alongside the observations
+   * rather than after them: it is a dynamic `import()` of a lazy chunk, so
+   * requesting it while the corpus is in flight costs nothing, and the pivot
+   * cannot start without it — every row label the run produces is resolved
+   * through it.
    */
   const prepare = useCallback(
     async (parameters: ReportRunParameters, codes: readonly string[]) => {
@@ -150,6 +157,7 @@ export function useReportRun(): UseReportRunResult {
         throw new Error('Configuration is still loading from xMart.')
       }
       const fetchCodes = reportFetchCodes(codes, variables, formulas)
+      const vocabularyPromise = loadReportVocabulary(parameters.language)
       const page = await mockXMartClient.getObservations({
         countries: parameters.countries,
         yearFrom: FIRST_YEAR,
@@ -167,7 +175,18 @@ export function useReportRun(): UseReportRunResult {
         if (code) reported.set(`${o.iso3}|${o.year}|${code}`, o.value)
       }
 
-      return buildReportAccess({ reported, variables, countries, currencies, formulas })
+      const vocabulary = await vocabularyPromise
+      return {
+        ...buildReportAccess({
+          reported,
+          variables,
+          countries,
+          currencies,
+          formulas,
+          vocabulary,
+        }),
+        vocabulary,
+      }
     },
     [variables, countries, currencies, formulas],
   )
@@ -207,7 +226,7 @@ export function useReportRun(): UseReportRunResult {
       setPhase('fetching')
 
       try {
-        const { access } = await prepare(parameters, codes)
+        const { access, vocabulary } = await prepare(parameters, codes)
         setPhase('pivoting')
         const table = buildPivot({
           definition,
@@ -216,6 +235,7 @@ export function useReportRun(): UseReportRunResult {
           codes,
           presentation: parameters.presentation,
           data: access,
+          vocabulary,
         })
         const outcome: ForegroundRun = {
           table,
@@ -252,7 +272,7 @@ export function useReportRun(): UseReportRunResult {
         const codes = codesFor(definition, parameters)
         if (codes.length === 0) throw new Error('The report names no variables to read.')
 
-        const { access } = await prepare(parameters, codes)
+        const { access, vocabulary } = await prepare(parameters, codes)
         const countryNameOf = (iso3: string) => access.fieldLabel('country', iso3)
 
         // One file per country (UC036/UC042), or one combined file.
@@ -286,6 +306,7 @@ export function useReportRun(): UseReportRunResult {
             codes,
             presentation: parameters.presentation,
             data: access,
+            vocabulary,
           })
 
           const file = buildReportFile({

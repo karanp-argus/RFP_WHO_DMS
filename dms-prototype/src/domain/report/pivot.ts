@@ -43,6 +43,12 @@ import {
   type ReportValueField,
 } from './definition'
 import { presentValue, type ReportPresentation } from './units'
+import {
+  ENGLISH_VOCABULARY,
+  fieldHeading,
+  fillTemplate,
+  type ReportVocabulary,
+} from './vocabulary'
 
 /* ==========================================================================
    THE DATA DOOR
@@ -141,6 +147,15 @@ export interface PivotTable {
   truncated: boolean
   /** Present when `truncated`; says what was dropped. */
   truncationNote: string | null
+  /**
+   * The language this table's labels were built in (UC041).
+   *
+   * Carried on the result rather than passed alongside it, because a table and
+   * its chrome have to agree: the axis labels were resolved through the access
+   * closure at build time and a viewer that chose its own vocabulary could
+   * render a French table with an English "Grand total" on the last line.
+   */
+  vocabulary: ReportVocabulary
 }
 
 /* ==========================================================================
@@ -154,6 +169,12 @@ export interface PivotRequest {
   codes: readonly string[]
   presentation: ReportPresentation
   data: ReportDataAccess
+  /**
+   * UC041 — the language the report's own words are written in. Defaults to
+   * English; the axis *labels* come from `data.fieldLabel`, which the caller
+   * built over the same vocabulary.
+   */
+  vocabulary?: ReportVocabulary
   /** Coordinate budget. Reached ⇒ `truncated`, never a quiet early stop. */
   maxCoordinates?: number
   /** Output cell budget, applied to rows once the axes are known. */
@@ -238,10 +259,18 @@ function flattenAxis(
   data: ReportDataAccess,
   grandTotal: boolean,
   grandTotalLabel: string,
+  vocabulary: ReportVocabulary,
 ): PivotAxisNode[] {
   if (fields.length === 0) {
     return [
-      { key: ALL_KEY, path: [], pathLabels: [], label: 'All', depth: 0, kind: 'leaf' },
+      {
+        key: ALL_KEY,
+        path: [],
+        pathLabels: [],
+        label: vocabulary.chrome.all,
+        depth: 0,
+        kind: 'leaf',
+      },
     ]
   }
 
@@ -278,7 +307,7 @@ function flattenAxis(
           key: subtotalKey(nextPath),
           path: nextPath,
           pathLabels: nextLabels,
-          label: `${own} — total`,
+          label: fillTemplate(vocabulary.chrome.subtotalTemplate, { label: own }),
           depth,
           kind: 'subtotal',
         })
@@ -351,12 +380,16 @@ function cellFrom(acc: Accumulator, aggregation: ReportAggregation): PivotCell {
   if (aggregation === 'count') {
     // A count is a count. Zero here means "reported nothing", which is the
     // answer a completeness report exists to give — not a blank.
+    //
+    // `Values` stays the canonical English key, like every other unit string:
+    // `translateUnit` turns it into the report's language at display time. See
+    // `vocabulary.ts` — a translated key stops comparing equal to itself.
     return {
       value: acc.count,
       count: acc.count,
       blanks: acc.blanks,
       unconverted: acc.unconverted,
-      unit: 'Values',
+      unit: ENGLISH_VOCABULARY.chrome.valuesUnit,
       mixedUnits: false,
     }
   }
@@ -421,6 +454,7 @@ export function buildPivot(request: PivotRequest): PivotTable {
     codes,
     presentation,
     data,
+    vocabulary = ENGLISH_VOCABULARY,
     maxCoordinates = DEFAULT_MAX_COORDINATES,
     maxCells = DEFAULT_MAX_CELLS,
   } = request
@@ -445,7 +479,9 @@ export function buildPivot(request: PivotRequest): PivotTable {
       for (const code of codes) {
         if (coordinatesRead >= maxCoordinates) {
           truncated = true
-          truncationNote = `Stopped after ${maxCoordinates.toLocaleString('en-GB')} country × year × variable combinations. Narrow the scope to see the rest.`
+          truncationNote = fillTemplate(vocabulary.chrome.truncatedCoordinates, {
+            max: maxCoordinates.toLocaleString('en-GB'),
+          })
           break outer
         }
         coordinatesRead++
@@ -508,13 +544,21 @@ export function buildPivot(request: PivotRequest): PivotTable {
 
   /* --- axes ------------------------------------------------------------- */
 
-  let rows = flattenAxis(rowRoot, rowFields, data, definition.grandTotal, 'Grand total')
+  let rows = flattenAxis(
+    rowRoot,
+    rowFields,
+    data,
+    definition.grandTotal,
+    vocabulary.chrome.grandTotal,
+    vocabulary,
+  )
   const columnNodes = flattenAxis(
     columnRoot,
     columnFields,
     data,
     definition.grandTotal,
-    'All columns',
+    vocabulary.chrome.allColumns,
+    vocabulary,
   )
 
   const columns: PivotColumn[] = []
@@ -532,7 +576,11 @@ export function buildPivot(request: PivotRequest): PivotTable {
       const dropped = rows.length - keep
       rows = rows.slice(0, keep)
       truncated = true
-      truncationNote = `${dropped.toLocaleString('en-GB')} of ${(keep + dropped).toLocaleString('en-GB')} rows are not shown — the table reached its ${maxCells.toLocaleString('en-GB')}-cell limit. Add a filter or move a field off Rows.`
+      truncationNote = fillTemplate(vocabulary.chrome.truncatedRows, {
+        dropped: dropped.toLocaleString('en-GB'),
+        total: (keep + dropped).toLocaleString('en-GB'),
+        max: maxCells.toLocaleString('en-GB'),
+      })
     }
   }
 
@@ -564,6 +612,7 @@ export function buildPivot(request: PivotRequest): PivotTable {
     unconverted: unconvertedTotal,
     truncated,
     truncationNote,
+    vocabulary,
   }
 }
 
@@ -590,7 +639,8 @@ export interface PivotGrid {
  * is that the file leaves DMS to be worked on elsewhere.
  */
 export function pivotToGrid(table: PivotTable): PivotGrid {
-  const rowFieldLabels = table.rowFields.map((p) => REPORT_FIELD_DEFS[p.field].label)
+  const vocabulary = table.vocabulary
+  const rowFieldLabels = table.rowFields.map((p) => fieldHeading(p.field, vocabulary))
   const leadingColumns = Math.max(1, rowFieldLabels.length)
   const leadingHeader =
     rowFieldLabels.length > 0 ? rowFieldLabels : ['']
@@ -609,8 +659,16 @@ export function pivotToGrid(table: PivotTable): PivotGrid {
       : Array.from({ length: leadingColumns }, () => '')
 
     const cells = table.columns.map((column) => {
+      // A value field's label is authored by whoever built the report (UC036),
+      // so it is content and stays as written — like the report's own name.
       if (isValueRow) return column.value.label
-      return columnHeaderAt(column.node, level, columnLevels, table.values[0]?.label ?? 'Value')
+      return columnHeaderAt(
+        column.node,
+        level,
+        columnLevels,
+        table.values[0]?.label ?? vocabulary.chrome.aboutValueColumn,
+        vocabulary.chrome.total,
+      )
     })
 
     headerRows.push([...leading, ...cells])
@@ -619,7 +677,7 @@ export function pivotToGrid(table: PivotTable): PivotGrid {
   const bodyRows: (string | number | null)[][] = table.rows.map((row, rowIndex) => {
     const leading: string[] = []
     for (let level = 0; level < leadingColumns; level++) {
-      leading.push(rowHeaderAt(row, level, table.rowFields.length))
+      leading.push(rowHeaderAt(row, level, table.rowFields.length, vocabulary.chrome.total))
     }
     const cells = table.columns.map(
       (_, columnIndex) => table.cells[rowIndex]?.[columnIndex]?.value ?? null,
@@ -640,21 +698,27 @@ function columnHeaderAt(
   level: number,
   columnLevels: number,
   soleValueLabel: string,
+  totalWord: string,
 ): string {
   if (columnLevels === 0) return soleValueLabel
   if (node.kind === 'grand-total') return level === 0 ? node.label : ''
   const label = node.pathLabels[level]
   if (label != null) return label
   // A subtotal column sits above the levels it totals; mark the first of them.
-  return level === node.pathLabels.length && node.kind === 'subtotal' ? 'Total' : ''
+  return level === node.pathLabels.length && node.kind === 'subtotal' ? totalWord : ''
 }
 
-function rowHeaderAt(node: PivotAxisNode, level: number, rowLevels: number): string {
+function rowHeaderAt(
+  node: PivotAxisNode,
+  level: number,
+  rowLevels: number,
+  totalWord: string,
+): string {
   if (rowLevels === 0) return node.label
   if (node.kind === 'grand-total') return level === 0 ? node.label : ''
   const label = node.pathLabels[level]
   if (label != null) return label
-  return level === node.pathLabels.length && node.kind === 'subtotal' ? 'Total' : ''
+  return level === node.pathLabels.length && node.kind === 'subtotal' ? totalWord : ''
 }
 
 /* ==========================================================================

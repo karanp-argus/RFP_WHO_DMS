@@ -366,6 +366,20 @@ Now run it. **Run** → select **five countries** → choose **download** rather
 > reads in national currency millions or US dollars per capita without being a different
 > report."*
 
+**Optional 20-second beat — UC041.** Before running, set **Report labels** to **French**, run on
+screen, and let them read the row labels.
+
+> *"UC041, all six official WHO languages. Headers, classification and indicator labels, the
+> totals and both sheets of the Excel file — the same numbers, the report's own vocabulary
+> translated. Country names are not translated, and that is the use case's own wording: field
+> values stay as registered."*
+
+If asked about Arabic, select it — the limit is on screen and worth saying out loud:
+
+> *"The labels are Arabic. The layout is not mirrored right-to-left — that is a layout project we
+> have scoped in the proposal, and the screen says so rather than letting you find it in a
+> screenshot."*
+
 While the jobs run, go to **Background jobs**, then let the notification arrive.
 
 > *"UC042: one file per country, generated in the background, and the notification carries a

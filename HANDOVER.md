@@ -41,6 +41,16 @@ All 8 phases are complete and verified in a browser. There is no next phase.
 | **7 — Users, dashboard, integration** | ✅ Done | `src/domain/users/`, `src/domain/notify/`, `src/domain/integration/`, `src/domain/home/` — all pure and tested. The Users list with inline role/active controls, grant-access by email, the last-administrator guard, and no delete anywhere. The UC008 matrix with a live capability preview, feeding the same value `usePermissions` reads. The Home dashboard: reporting round, due dates, publication queue, quality findings, submissions and a completeness heatmap. The integration module in three tabs — live To-Be architecture, per-source sync, the API call log and UC044's dataset restore — plus the Dev drawer the header button has been toggling since Phase 0. The Annex 3 simulator answering all thirteen rows and producing a real CSV. The notifications module: event catalogue, subscriptions, and UC023 due dates as a second sender. **411 passing tests** + a 92-check browser harness. |
 | **8 — Polish, demo script, packaging** | ✅ Done | Route-level `React.lazy` on all 15 page components — the critical path is **225 kB gzipped**, down from 636 kB in one chunk — with `Suspense` + an `ErrorBoundary` inside the shell so a failed route keeps the navigation. `scripts/contrast-audit.mjs` promoted into the repo and grown to **52 pairs × 2 themes**, which found eight real failures and moved five token values. `scripts/bundle-report.mjs` as a critical-path gate. The keyboard pass (Esc on the two non-Radix panels; `Ctrl+Z` no longer hijacks text fields). The responsive sweep at 1920/1440/1280/1024/768 × both themes, which found one real overflow. Static hosting fixed for deep links (`404.html` + `scripts/serve-dist.mjs`). **[DEMO_SCRIPT.md](DEMO_SCRIPT.md)** and a rebuilt **[README.md](README.md)**. The CHE financing split now reconciles. **413 passing tests**, **386 asserted browser checks**, all re-run against the production build on a bare static server. |
 
+**After Phase 8 — UC041 completed.** The one item in the table above that was left as a stub is
+now built: **all six official WHO languages carry seeded label packs**, so a report runs with its
+headers, classification and indicator labels, totals, unit strings and both Excel sheets in the
+chosen language. 178 variable labels per language live in `src/data/seed/translations/`, one
+module each, **loaded on demand** — the critical path moved 225 → **226 kB gzipped** because the
+packs are lazy chunks of 4–5 kB, not because they were inlined. **Arabic is labels-only: the grid
+is not mirrored right-to-left**, and the run page says so when Arabic is selected. Test count
+413 → **479**; the reports harness 51 → **58 checks**, so 386 → **393** browser checks in total.
+See standing trade-off 10 for the two rules that keep this working.
+
 **Use-case coverage.** All **64** RFP rows are accounted for: **40 of the 41 Pilot use cases are
 demonstrable in the application** (35 fully, 5 with a stated limit — UC006, 028, 045, 046, 056),
 the 41st being UC061 *Phased implementation*, which is a delivery plan answered by
@@ -75,8 +85,8 @@ behaviour is demonstrated.
 
 ```bash
 npx tsc -b        # typecheck
-npm test          # 413 unit tests (domain, formula engine, workbook, QC rules, pivot, users,
-                  #                 notifications, Annex 3, dashboard, mock client)
+npm test          # 479 unit tests (domain, formula engine, workbook, QC rules, pivot, users,
+                  #                 notifications, Annex 3, dashboard, mock client, UC041 packs)
 npm run build     # production build
 ```
 
@@ -228,7 +238,7 @@ blocks a demo.
 | 7 | **The QC check budget (`DEFAULT_MAX_CHECKS`, 400k value reads) is not reached by any delivered scope**, but a user-authored rule naming a hundred codes over every country would hit it. Truncation is reported per rule rather than hidden. No screen offers "run everything over all 194 countries"; measure before adding one. |
 | 8 | **UC020 (delete one component value) is not built.** Proving a value is unused needs a full-corpus scan the front end cannot honestly perform, so the LOV editor **states the constraint** instead of faking the check. Needs a backend. |
 | 9 | **Report jobs and their generated `.xlsx` blobs are session state.** Several megabytes of binary, same quota as item 6. Notifications themselves persist, and a download link whose files have been dropped says so and offers to re-run. Needs a backend. |
-| 10 | **UC041 is partial.** EN / FR / ES are selectable for report labels; AR / ZH / RU are listed, disabled, each carrying its reason. Arabic needs right-to-left layout, which is scoped in the proposal rather than faked. Completing the other two is a *content* task — translated variable labels in the seeded configuration — not a code one. |
+| 10 | **UC041 is translated in all six WHO languages; Arabic is labels-only.** Headers, classification and indicator labels, totals, unit strings, both Excel sheets and the sheet tabs come back in the chosen language — 178 variable labels per language in `src/data/seed/translations/`, one lazily-imported module each. **Right-to-left layout is not implemented:** an Arabic report reads correctly cell by cell but the grid still runs left to right, and the run page states that when Arabic is selected. Mirroring is a layout project (mirrored frozen panes, `dir` on the worksheet), scoped in the proposal. Field values stay untranslated by design — country and currency names, report names, observation metadata — which is UC041's own carve-out. **Two rules if you touch this:** the packs must never be imported statically (`classifications.ts` is on the critical path, which has 24 kB of headroom), and unit strings must stay canonical English on `PivotCell.unit` — translating that key stops the mixed-currency guard comparing like with like. Both are explained in `domain/report/vocabulary.ts` and asserted in `translations.test.ts`. |
 | 11 | **`Variable.isCurrency` is per dimension, and MACRO mixes monetary series with population, an exchange rate and a PPP factor.** `domain/report/units.ts` names the three monetary members (`MONETARY_MACRO_CODES`) rather than reopening the Phase 1 seed. If the seed ever grows per-row currency flags, delete that constant. Deliberately left as-is at Phase 8: reopening the seed to remove one constant would invalidate every locked-in economic ratio in `phase1.test.ts` for no behavioural gain. |
 | 12 | **Two shadcn chart slots are unreadable on the dark surface.** `--color-chart-2` and `--color-chart-3` map onto `--who-sidebar` and `--who-brand`, at 1.25:1 and 2.48:1. **Nothing draws with them** — the one chart in the app uses `--who-fail` and `--who-warn` — so `audit:contrast` records this rather than reporting it as a failure. **Fix them before adding a second chart.** New at Phase 8. |
 | 13 | **UC031.1 (order workbook data by any element) is not built.** Row order follows the classification hierarchy, which is what makes the parent/child colouring legible; an arbitrary sort would break the visual grouping the §2.4 "keep" list depends on. A roadmap line, not a gap in the Pilot scope. |

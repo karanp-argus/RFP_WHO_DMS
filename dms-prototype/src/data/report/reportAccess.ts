@@ -24,20 +24,15 @@ import {
   type FormulaEngine,
 } from '@/domain/formula'
 import {
+  ENGLISH_VOCABULARY,
   MONETARY_MACRO_CODES,
+  translateUnit,
+  variableLabel,
   type ReportDataAccess,
   type ReportFieldId,
+  type ReportVocabulary,
 } from '@/domain/report'
-import {
-  DIMENSION_LABELS,
-  UNITS,
-  WB_INCOME_LABELS,
-  WHO_REGION_LABELS,
-  YEARS,
-  type DimensionCode,
-  type WbIncome,
-  type WhoRegion,
-} from '@/domain/constants'
+import { UNITS, YEARS } from '@/domain/constants'
 import type { Country, Currency, Formula, Variable } from '@/domain/types'
 
 export interface ReportAccessInput {
@@ -47,6 +42,11 @@ export interface ReportAccessInput {
   countries: readonly Country[]
   currencies: readonly Currency[]
   formulas: readonly Formula[]
+  /**
+   * UC041 — the language every label this closure produces comes back in.
+   * Defaults to English, which is also what an untranslated code falls back to.
+   */
+  vocabulary?: ReportVocabulary
 }
 
 export interface ReportAccessResult {
@@ -64,7 +64,14 @@ const EXCHANGE_RATE_CODE = 'EXR'
 const INDICATOR_GROUP = 'IND'
 
 export function buildReportAccess(input: ReportAccessInput): ReportAccessResult {
-  const { reported, variables, countries, currencies, formulas } = input
+  const {
+    reported,
+    variables,
+    countries,
+    currencies,
+    formulas,
+    vocabulary = ENGLISH_VOCABULARY,
+  } = input
 
   const variableByCode = new Map(variables.map((v) => [v.code, v]))
   const countryByIso3 = new Map(countries.map((c) => [c.CODE_ISO_3, c]))
@@ -120,8 +127,16 @@ export function buildReportAccess(input: ReportAccessInput): ReportAccessResult 
     return variableByCode.get(code)?.dimension ?? INDICATOR_GROUP
   }
 
+  /**
+   * UC041: the pack's label if it has one, otherwise the seeded English name.
+   *
+   * Falling back rather than failing is deliberate — a custom formula an
+   * administrator wrote this morning (UC030) has no translation and never will
+   * have one in a seed file, and it should appear under the name they gave it.
+   */
   function variableLabelOf(code: string): string {
-    return variableByCode.get(code)?.label ?? formulaByCode.get(code)?.name ?? code
+    const english = variableByCode.get(code)?.label ?? formulaByCode.get(code)?.name ?? code
+    return variableLabel(code, english, vocabulary)
   }
 
   const access: ReportDataAccess = {
@@ -152,20 +167,32 @@ export function buildReportAccess(input: ReportAccessInput): ReportAccessResult 
       }
     },
 
+    /**
+     * UC041 translates *labels*; it explicitly does not translate field values
+     * (*"any report displaying text as part of the fields values … will not be
+     * translated"*). Country and currency names are values — the xMart registry
+     * holds one name each — so they come back as registered in every language,
+     * while a WHO region, an income group and a classification are vocabulary
+     * and move with the report.
+     */
     fieldLabel: (field: ReportFieldId, key: string): string => {
       switch (field) {
         case 'country':
           return countryByIso3.get(key)?.NAME_SHORT_EN ?? key
         case 'region':
-          return WHO_REGION_LABELS[key as WhoRegion] ?? key
+          return vocabulary.regions[key] ?? key
         case 'income':
-          return WB_INCOME_LABELS[key as WbIncome] ?? key
+          return vocabulary.incomes[key] ?? key
+        case 'oecd':
+          return vocabulary.oecd[key] ?? key
         case 'currency':
           return currencyByCode.get(key)?.TITLE ?? key
         case 'variable':
           return variableLabelOf(key)
         case 'classification':
-          return DIMENSION_LABELS[key as DimensionCode] ?? key
+          return vocabulary.dimensions[key] ?? key
+        case 'unit':
+          return translateUnit(key, vocabulary)
         default:
           return key
       }

@@ -332,10 +332,25 @@ check(
   'the unit selector offers national currency and US dollars',
   await page.getByText(/US dollars \(converted at the reported exchange rate\)/).isVisible(),
 )
+// UC041: all six languages must be *selectable*. A disabled option looked the
+// same as a live one in the old name-only check, which is how this passed while
+// half the list was inert.
+await page.locator('#run-language').click()
+await page.waitForTimeout(250)
+const languageOptions = page.getByRole('option')
+const languageCount = await languageOptions.count()
+let disabledLanguages = 0
+for (let i = 0; i < languageCount; i++) {
+  const disabled = await languageOptions.nth(i).getAttribute('data-disabled')
+  if (disabled != null) disabledLanguages++
+}
 check(
-  'UC041 lists all six WHO languages, three of them live',
-  (await page.locator('#run-language').innerText()).length > 0,
+  'UC041 offers all six WHO languages and none of them is disabled',
+  languageCount === 6 && disabledLanguages === 0,
+  `${languageCount} options, ${disabledLanguages} disabled`,
 )
+await page.keyboard.press('Escape')
+await page.waitForTimeout(200)
 
 await page.getByRole('button', { name: /Reports demo set \(5\)/ }).click()
 await page.waitForTimeout(300)
@@ -363,6 +378,78 @@ check(
 )
 
 /* ==========================================================================
+   6b. The same report, run in another language (UC041)
+   ========================================================================== */
+
+/**
+ * The assertions are report-specific on purpose. This report puts **OECD
+ * membership** and **Country** on the row axis with a subtotal per group, and no
+ * `variable` field anywhere — so what it can prove is the field headers, the
+ * translated grouping values and the subtotal template. Classification labels
+ * are checked in 7b, on a report that actually renders them. A regex hoping to
+ * find some French somewhere would pass on the wrong report and prove nothing.
+ */
+console.log('\n=== 6b. The same report run in French (UC041) ===')
+await page.locator('#run-language').click()
+await page.waitForTimeout(250)
+await page.getByRole('option', { name: /^French$/ }).click()
+await page.waitForTimeout(300)
+await page.getByRole('button', { name: /^Run report$/ }).click()
+await page.waitForTimeout(3500)
+
+const frenchBody = await page.locator('body').innerText()
+check(
+  'the row-axis field headers are translated',
+  // Case-insensitive: the header cells are `uppercase` in CSS, and `innerText`
+  // returns the rendered text, so "Appartenance" arrives as "APPARTENANCE".
+  /appartenance/i.test(frenchBody) && /\bpays\b/i.test(frenchBody),
+)
+check(
+  'the OECD grouping values are translated',
+  frenchBody.includes('Hors OCDE') && frenchBody.includes('OCDE'),
+)
+await shot('06b-french', { fullPage: true })
+
+downloads.length = 0
+await page.getByRole('button', { name: 'Download Excel' }).click()
+await page.waitForTimeout(1200)
+check(
+  'a French report exports as a real file (UC041 + UC042)',
+  downloads.length === 1 && downloads[0].endsWith('.xlsx'),
+  downloads.join(', ') || 'nothing downloaded',
+)
+
+/**
+ * The subtotal *filler* word is checked in Russian, not French.
+ *
+ * On a two-level row axis the subtotal line renders as the group name in the
+ * outer column and `chrome.total` in the inner one — and `chrome.total` is
+ * "Total" in both English and French, so a French assertion could not tell a
+ * translated cell from an untranslated one. `Итого` can. The `{label}` template
+ * itself is asserted in `translations.test.ts`, where a one-level axis makes it
+ * visible.
+ */
+await page.locator('#run-language').click()
+await page.waitForTimeout(250)
+await page.getByRole('option', { name: /^Russian$/ }).click()
+await page.waitForTimeout(300)
+await page.getByRole('button', { name: /^Run report$/ }).click()
+await page.waitForTimeout(3500)
+const russianTable = await page.locator('table').innerText()
+check(
+  'the subtotal filler word and grouping values are translated (Russian)',
+  russianTable.includes('Итого') && russianTable.includes('Не ОЭСР'),
+)
+await shot('06c-russian', { fullPage: true })
+
+// Back to English: section 7 asserts on the English word "mixed", which is
+// itself part of the report vocabulary and reads "mixte" in French.
+await page.locator('#run-language').click()
+await page.waitForTimeout(250)
+await page.getByRole('option', { name: /^English$/ }).click()
+await page.waitForTimeout(300)
+
+/* ==========================================================================
    7. The national-currency guard
    ========================================================================== */
 
@@ -379,6 +466,73 @@ check(
   `${mixedCells} cells`,
 )
 await shot('07-mixed-currency', { fullPage: true })
+
+/* ==========================================================================
+   7b. Classification labels and the Arabic caveat (UC041)
+   ========================================================================== */
+
+/**
+ * `rep-hf-by-year` is the report with the SHA financing schemes on the row
+ * axis, so it is the one that can prove classification labels are translated.
+ * One country keeps the run in the foreground — the report is
+ * `oneFilePerCountry`, so several would correctly go to the background queue
+ * and there would be no table on screen to read.
+ */
+console.log('\n=== 7b. Classification labels in French, then the Arabic caveat ===')
+await page.goto(`${BASE}/reports/run/rep-hf-by-year`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(700)
+
+// The picker's trigger declares `role="combobox"`, so `getByRole('button')`
+// never matches it — the aria-label is what disambiguates it from the Select
+// triggers on the same page, which are comboboxes too.
+await page.getByRole('combobox', { name: 'Countries to run the report for' }).click()
+await page.waitForTimeout(300)
+await page.getByPlaceholder(/Search by name or ISO3 code/i).fill('Canada')
+await page.waitForTimeout(400)
+await page.getByRole('option', { name: /Canada/ }).first().click()
+await page.keyboard.press('Escape')
+await page.waitForTimeout(300)
+
+// This report is `oneFilePerCountry`, so `defaultParameters` opens it on
+// download-only and the run button reads "Generate and download". Switch to
+// on-screen delivery, which is what leaves a table to read the labels from.
+await page.locator('label:has-text("Display on screen")').click()
+await page.waitForTimeout(200)
+
+await page.locator('#run-language').click()
+await page.waitForTimeout(250)
+await page.getByRole('option', { name: /^French$/ }).click()
+await page.waitForTimeout(300)
+await page.getByRole('button', { name: /^Run report$/ }).click()
+await page.waitForTimeout(3500)
+
+const schemeTable = await page.locator('table').innerText()
+check(
+  'SHA 2011 classification labels come back in French',
+  /Régimes publics|Paiements directs des ménages|Régimes de financement/.test(schemeTable),
+  schemeTable.split('\n')[1] ?? '',
+)
+await shot('07b-french-schemes', { fullPage: true })
+
+// Arabic is the one language with a stated limit, and the limit has to be on
+// screen rather than only in the README.
+await page.locator('#run-language').click()
+await page.waitForTimeout(250)
+await page.getByRole('option', { name: /^Arabic/ }).click()
+await page.waitForTimeout(300)
+check(
+  'selecting Arabic states that right-to-left layout is not implemented',
+  (await page.locator('body').innerText()).includes('Right-to-left layout is not implemented'),
+)
+await page.getByRole('button', { name: /^Run report$/ }).click()
+await page.waitForTimeout(3500)
+check(
+  'Arabic labels are rendered, not left in English',
+  // U+0600-U+06FF is the Arabic block.
+  /[\u0600-\u06FF]/.test(await page.locator('table').innerText()),
+)
+await shot('07c-arabic-schemes', { fullPage: true })
+
 
 /* ==========================================================================
    8. Data tracking (UC039)

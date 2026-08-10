@@ -12,10 +12,15 @@
  * dollars. A selector that silently left half the report unchanged would be
  * read as a bug, so the control says which half it applies to.
  *
- * **UC041 is partial and labelled as such.** English, French and Spanish have
- * seeded variable labels; Arabic, Chinese and Russian are listed and disabled,
- * with the reason on the option. Arabic in particular needs RTL layout work
- * that belongs in the proposal rather than in a fake dropdown entry.
+ * **All six WHO languages carry seeded labels (UC041).** Headers, classification
+ * labels, indicator names, totals and both exported sheets are translated;
+ * country names, currency names, the report's own name and observation metadata
+ * are field values and stay as registered, which is UC041's own carve-out.
+ *
+ * **Arabic is a caveat, and the caveat is on screen rather than in a document.**
+ * The labels are Arabic; the grid still runs left to right. Selecting it says so
+ * beneath the selector, because the one way to get this wrong in a demo is to
+ * let a reviewer discover it from a screenshot.
  */
 
 import { Info } from 'lucide-react'
@@ -29,6 +34,7 @@ import {
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
+  RTL_LANGUAGES,
   SCALES,
   SCALE_LABELS,
   WHO_LANGUAGES,
@@ -44,16 +50,28 @@ import {
 } from '@/domain/report'
 
 /**
- * Languages with seeded labels. The other three are offered and disabled rather
- * than hidden, because "we know these are required and here is what is missing"
- * is a stronger answer to HLR21 than a dropdown with three entries.
+ * Languages with a seeded label pack — all six of HLR21.
+ *
+ * Kept as a named list rather than assumed equal to `WHO_LANGUAGES`, because it
+ * is the thing `translations.test.ts` asserts coverage against: adding a seventh
+ * language to the constant should not silently offer a language with no pack.
  */
-export const SUPPORTED_REPORT_LANGUAGES: readonly WhoLanguage[] = ['en', 'fr', 'es']
+export const SUPPORTED_REPORT_LANGUAGES: readonly WhoLanguage[] = [
+  'en',
+  'fr',
+  'es',
+  'ar',
+  'zh',
+  'ru',
+]
 
-const UNSUPPORTED_REASON: Partial<Record<WhoLanguage, string>> = {
-  ar: 'Needs right-to-left layout — scoped in the proposal, not faked here',
-  zh: 'Variable labels not yet translated in the seeded configuration',
-  ru: 'Variable labels not yet translated in the seeded configuration',
+/**
+ * Limits worth stating at the point of choosing, not in a footnote. Both are
+ * true of the prototype and neither is hidden: the RTL one is a layout project
+ * scoped in the proposal, and the "not translated" one is UC041's own carve-out.
+ */
+const LANGUAGE_CAVEAT: Partial<Record<WhoLanguage, string>> = {
+  ar: 'Labels are translated. Right-to-left layout is not implemented in this prototype — the grid still runs left to right.',
 }
 
 export interface PresentationControlsProps {
@@ -157,9 +175,10 @@ export function PresentationControls({
               <Info className="size-3 text-who-icon" />
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
-              UC041: headers and labels are translated; field values such as metadata text are
-              not. Three of the six WHO languages have seeded labels — the rest are listed with
-              what is missing.
+              UC041: all six official WHO languages. Headers, classification labels, indicator
+              names, totals and both sheets of the Excel file are translated. Field values are
+              not — country and currency names, the report’s own name and observation metadata
+              stay as registered, which is what the use case asks for.
             </TooltipContent>
           </Tooltip>
         </Label>
@@ -169,20 +188,34 @@ export function PresentationControls({
           onValueChange={(v) => onChange({ ...presentation, language: v as WhoLanguage })}
         >
           <SelectTrigger id={`${idPrefix}-language`} className="mt-1 w-48">
-            <SelectValue />
+            {/*
+              Children override what Radix would render, which is the selected
+              option's full text. Without this the trigger inherits the RTL hint
+              below and truncates it mid-word at this width — the hint belongs in
+              the list and in the note under the control, not in 48 rem of button.
+            */}
+            <SelectValue>{WHO_LANGUAGE_LABELS[presentation.language]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {WHO_LANGUAGES.map((l) => {
-              const supported = SUPPORTED_REPORT_LANGUAGES.includes(l)
-              return (
-                <SelectItem key={l} value={l} disabled={!supported}>
-                  {WHO_LANGUAGE_LABELS[l]}
-                  {supported ? '' : ` — ${UNSUPPORTED_REASON[l] ?? 'not available'}`}
-                </SelectItem>
-              )
-            })}
+            {WHO_LANGUAGES.map((l) => (
+              <SelectItem
+                key={l}
+                value={l}
+                disabled={!SUPPORTED_REPORT_LANGUAGES.includes(l)}
+              >
+                {WHO_LANGUAGE_LABELS[l]}
+                {RTL_LANGUAGES.includes(l) ? (
+                  <span className="text-who-text-muted">— labels only, no RTL layout</span>
+                ) : null}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        {LANGUAGE_CAVEAT[presentation.language] ? (
+          <p className="mt-1 max-w-[13rem] text-[length:var(--text-meta)] text-who-text-muted">
+            {LANGUAGE_CAVEAT[presentation.language]}
+          </p>
+        ) : null}
       </div>
     </div>
   )

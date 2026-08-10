@@ -59,6 +59,16 @@ export {
 } from './units'
 
 export {
+  ENGLISH_VOCABULARY,
+  fieldHeading,
+  fillTemplate,
+  translateUnit,
+  variableLabel,
+  type ReportChrome,
+  type ReportVocabulary,
+} from './vocabulary'
+
+export {
   buildPivot,
   DEFAULT_MAX_CELLS,
   DEFAULT_MAX_COORDINATES,

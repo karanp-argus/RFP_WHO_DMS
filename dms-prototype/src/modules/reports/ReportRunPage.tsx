@@ -47,6 +47,7 @@ import { YEARS } from '@/domain/constants'
 import {
   defaultParameters,
   estimateCoordinates,
+  translateUnit,
   yearRange,
   type ReportRunParameters,
 } from '@/domain/report'
@@ -350,7 +351,10 @@ export function ReportRunPage() {
             </Badge>
             {result.table.units.length > 0 ? (
               <Badge variant="outline" className="text-who-text-muted">
-                {result.table.units.join(' · ')}
+                {/* Stored canonical, shown in the report's language — UC041. */}
+                {result.table.units
+                  .map((u) => translateUnit(u, result.table.vocabulary))
+                  .join(' · ')}
               </Badge>
             ) : null}
             {result.table.unconverted > 0 ? (
