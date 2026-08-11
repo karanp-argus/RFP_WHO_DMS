@@ -1,0 +1,205 @@
+/* Shared styling for the three Proposed Solution diagrams.
+   Fonts are the ones embedded in the proposal .docx so the figures match the body text.
+   Colours are the WHO reference palette used throughout the prototype — see
+   dms-prototype/src/styles/globals.css. No colour is defined anywhere but here.
+
+   NOTE ON SIZING. This is the dense design, chosen deliberately. At a 1300px canvas
+   placed 6.5in wide, 1 css px prints at 0.36pt, so the 11.5px body text here is ~4pt on
+   a US Letter page — legible on screen and when zoomed in a PDF, but not in print at
+   that width. render.mjs reports the smallest printed type on every run so the number is
+   never a surprise. If these are ever placed on a portrait page at 6.5in, either enlarge
+   the type scale or give the figures a landscape page. */
+
+@font-face { font-family: 'Roboto'; font-weight: 400; src: url('fonts/Roboto-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Roboto'; font-weight: 500; src: url('fonts/RobotoMedium-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Roboto'; font-weight: 700; src: url('fonts/Roboto-bold.ttf') format('truetype'); }
+@font-face { font-family: 'Open Sans'; font-weight: 400; src: url('fonts/OpenSans-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Open Sans'; font-weight: 700; src: url('fonts/OpenSans-bold.ttf') format('truetype'); }
+
+:root {
+  --heading:  #43425D;   /* violet-dark — headings and platform services */
+  --blue:     #4D7AC4;   /* WHO sidebar blue — the DMS itself */
+  --blue-dk:  #3C61A0;
+  --accent:   #3B86FF;   /* primary blue — APIs and flows */
+  --teal:     #2F8F83;   /* xMart — deliberately distinct from the DMS blue */
+  --teal-dk:  #247067;
+  --text:     #4D4F5C;
+  --muted:    #7C7F8D;
+  --gray:     #A3A6B4;   /* out-of-scope / existing systems */
+  --bg:       #F0F0F7;
+  --border:   #E9E9F0;
+  --white:    #FFFFFF;
+  --amber:    #B26B00;   /* one-off / migration */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Open Sans', Arial, sans-serif;
+  color: var(--text);
+  background: var(--white);
+  width: 1300px;
+  padding: 28px 30px 30px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- structural bands ------------------------------------------------- */
+
+.band {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 14px 16px 16px;
+}
+.band + .band { margin-top: 14px; }
+
+.band-title {
+  font-family: 'Roboto', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--heading);
+  margin-bottom: 11px;
+}
+.band-title .sub {
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  color: var(--muted);
+  font-size: 11.5px;
+  margin-left: 8px;
+}
+
+.row { display: flex; gap: 12px; align-items: stretch; }
+.row > * { flex: 1; }
+
+/* ---- cards ------------------------------------------------------------ */
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--blue);
+  border-radius: 6px;
+  padding: 10px 12px 11px;
+}
+.card h4 {
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.25;
+  margin-bottom: 5px;
+}
+.card p  { font-size: 11.5px; line-height: 1.45; color: var(--text); }
+.card .uc {
+  display: block;
+  margin-top: 7px;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+.card.teal  { border-top-color: var(--teal); }
+.card.violet{ border-top-color: var(--heading); }
+.card.gray  { border-top-color: var(--gray); background: #FAFAFC; }
+.card.gray h4 { color: var(--muted); }
+.card.accent{ border-top-color: var(--accent); }
+.card.amber { border-top-color: var(--amber); }
+
+/* ---- pills ------------------------------------------------------------ */
+
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--heading);
+  border-radius: 4px;
+  padding: 7px 11px;
+  font-size: 11.5px;
+  line-height: 1.3;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.pill b {
+  display: block;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--heading);
+  margin-bottom: 2px;
+}
+.pill.teal   { border-left-color: var(--teal); }
+.pill.accent { border-left-color: var(--accent); }
+.pill.amber  { border-left-color: var(--amber); }
+.pill.gray   { border-left-color: var(--gray); color: var(--muted); background: #FAFAFC; }
+
+/* ---- connectors ------------------------------------------------------- */
+
+.flow {
+  text-align: center;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+  padding: 7px 0 5px;
+  position: relative;
+}
+.flow::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--accent);
+  opacity: .35;
+}
+.flow span {
+  position: relative;
+  background: var(--white);
+  padding: 0 12px;
+}
+
+.arrow-down { color: var(--accent); font-size: 15px; line-height: 1; }
+
+/* ---- legend ----------------------------------------------------------- */
+
+.legend {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  align-items: center;
+}
+.legend .key { display: flex; align-items: center; gap: 7px; }
+.legend .swatch {
+  width: 13px; height: 13px; border-radius: 3px; flex: none;
+  border: 1px solid rgba(0,0,0,.08);
+}
+.sw-blue  { background: var(--blue); }
+.sw-teal  { background: var(--teal); }
+.sw-violet{ background: var(--heading); }
+.sw-gray  { background: var(--gray); }
+.sw-amber { background: var(--amber); }
+.sw-accent{ background: var(--accent); }
+
+/* ---- figure title ----------------------------------------------------- */
+
+.fig-title {
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 3px;
+}
+.fig-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}

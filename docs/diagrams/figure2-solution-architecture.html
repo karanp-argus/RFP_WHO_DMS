@@ -1,0 +1,136 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<style>
+  .arch { display: flex; gap: 14px; align-items: stretch; }
+  .arch .tiers { flex: 1 1 auto; min-width: 0; }
+  .arch .cross {
+    flex: 0 0 208px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    padding: 14px 14px 16px;
+  }
+  .cross .item {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--heading);
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .cross .item:last-child { margin-bottom: 0; }
+  .cross .item b {
+    display: block;
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 11.5px;
+    color: var(--heading);
+    margin-bottom: 2px;
+  }
+  .host {
+    margin-top: 14px;
+    border: 1px dashed var(--gray);
+    border-radius: 8px;
+    padding: 11px 16px;
+    font-size: 11.5px;
+    color: var(--muted);
+    background: #FAFAFC;
+  }
+  .host b { font-family: 'Roboto', Arial, sans-serif; color: var(--heading); }
+</style></head>
+<body>
+
+<div class="fig-title">Solution Architecture</div>
+<div class="fig-sub">An n-tier, service-oriented architecture with a single controlled boundary to the xMart data warehouse.</div>
+
+<div class="arch">
+  <div class="tiers">
+
+    <div class="band">
+      <div class="band-title">Presentation tier <span class="sub">browser-based single-page application · English interface, HLR21</span></div>
+      <div class="row">
+        <div class="pill"><b>Workbook grid</b>Virtualized, frozen panes, range copy/paste, undo</div>
+        <div class="pill"><b>Report builder</b>Drag-based definition with live preview</div>
+        <div class="pill"><b>Setup &amp; administration</b>Configuration screens for every component</div>
+        <div class="pill"><b>Dashboard &amp; notifications</b>Working queue and event inbox</div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.45">
+        Holds no business rules and enforces no security decision that is not also enforced on the server.
+        Large result sets are never assembled in the browser — requests are filtered and paged on the server.
+      </p>
+    </div>
+
+    <div class="flow"><span>▼ &nbsp; HTTPS &nbsp;·&nbsp; secured service calls</span></div>
+
+    <div class="band">
+      <div class="band-title">API &amp; business logic tier <span class="sub">stateless services, horizontally scalable</span></div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="pill"><b>Authorization &amp; country scoping</b>Roles, permission matrix, UC009 country restrictions — enforced at the service boundary</div>
+        <div class="pill"><b>Calculation engine</b>Tokenizer, parser, abstract syntax tree, dependency graph with cycle detection, null-condition evaluation</div>
+        <div class="pill"><b>Quality check engine</b>Predefined and custom rules, configurable thresholds, exclusions</div>
+      </div>
+      <div class="row">
+        <div class="pill"><b>Versioning &amp; change capture</b>Authorship, timestamps, version assembly</div>
+        <div class="pill"><b>xMart exchange orchestration</b>What to retrieve, what to write back, and when</div>
+        <div class="pill"><b>Background job manager</b>Queue, execute, monitor, restart, retry</div>
+        <div class="pill accent"><b>Data Retrieval API</b>Exposed to xMart — RFP Annex 3</div>
+      </div>
+    </div>
+
+    <div class="flow"><span>▼</span></div>
+
+    <div class="band">
+      <div class="band-title">Data access &amp; integration tier <span class="sub">every store reached through one abstraction</span></div>
+      <div class="row">
+        <div class="pill accent"><b>xMart integration client</b>Authentication, paging, filtering, retry, error handling; maps the xMart long-format structure onto the DMS domain model</div>
+        <div class="pill"><b>Local database access</b>Persistence for operational data</div>
+        <div class="pill"><b>Cache</b>Reference and configuration data, invalidated on Setup changes</div>
+      </div>
+    </div>
+
+    <div class="flow"><span>▼</span></div>
+
+    <div class="band">
+      <div class="band-title">Storage <span class="sub">HLR11 — xMart holds the Health Accounts record; the DMS holds its own operational data</span></div>
+      <div class="row">
+        <div class="card teal" style="flex:1.1">
+          <h4>WHO xMart — data warehouse</h4>
+          <p>Observations and values · observation metadata · configuration and reference data · version history · legacy formulas as metadata. No Health Accounts value is authoritative anywhere else.</p>
+          <span class="uc">Accessed exclusively through the secured xMart API</span>
+        </div>
+        <div class="card">
+          <h4>DMS local database</h4>
+          <p>Users, roles, permissions, country restrictions · quality check and report definitions · user preferences · job queue and outputs · edit locks · notifications · audit log · cached reference data.</p>
+          <span class="uc">Never a competing copy of the warehouse</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="cross">
+    <div class="band-title" style="margin-bottom:11px">Cross-cutting</div>
+    <div class="item"><b>WHO Entra ID</b>Single sign-on for internal and guest users</div>
+    <div class="item"><b>Security</b>OWASP-aligned SDLC, encryption in transit and at rest, OAuth 2.0, HTTPS</div>
+    <div class="item"><b>Audit &amp; logging</b>Every data, configuration, permission and integration event</div>
+    <div class="item"><b>Monitoring</b>24×7 automated performance and availability monitoring</div>
+    <div class="item"><b>Configuration</b>Thresholds, rules, formulas and permissions changed through the interface, not by release</div>
+    <div class="item"><b>DevOps</b>Azure DevOps pipelines, Infrastructure as Code</div>
+  </div>
+</div>
+
+<div class="host">
+  <b>Hosting</b> &nbsp;·&nbsp; Development environment provided and operated by Argusoft &nbsp;|&nbsp;
+  <b>UAT and Production provided and hosted by WHO within WHO Azure</b> &nbsp;·&nbsp;
+  sprint deliverables deployed to UAT for WHO verification, approved releases promoted to Production.
+</div>
+
+<div class="legend">
+  <div class="key"><span class="swatch sw-violet"></span> DMS application tiers and services</div>
+  <div class="key"><span class="swatch sw-accent"></span> Integration boundary and exposed APIs</div>
+  <div class="key"><span class="swatch sw-teal"></span> WHO xMart — authoritative Health Accounts data</div>
+  <div class="key"><span class="swatch sw-blue"></span> Presentation components</div>
+</div>
+
+</body></html>
