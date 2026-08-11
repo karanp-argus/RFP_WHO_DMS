@@ -92,11 +92,13 @@ and we expect it to change once the team has spent time with it.
 
 **Functional Landscape**
 
-> **[FIGURE 1]**
+> **[FIGURE 1 · `docs/assets/figure1-functional-landscape.png`]**
+> Functional landscape of the proposed Health Accounts Data Management System.
 
 **Architecture Diagram**
 
-> **[FIGURE 2]**
+> **[FIGURE 2 · `docs/assets/figure2-solution-architecture.png`]**
+> Solution architecture.
 
 The application architecture will have the following layers.
 
@@ -368,7 +370,12 @@ addition. Our proposal delivers a common dashboard first, filtered by permission
 role specific layouts in the agreed phase, with the administrator view gaining operational content
 such as integration health, background job status and recent configuration changes.
 
-> **[SCREENSHOT 1]**
+> **[SCREENSHOT 1 · `docs/assets/screenshots/01-home-dashboard.png`]**
+> Home dashboard: reporting round, publication readiness, quality findings and data completeness.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Users and Role Management
 
@@ -411,7 +418,12 @@ authorship, version histories, rule and report ownership and audit entries, and 
 break the traceability those references provide. There is therefore no delete action anywhere in the
 module, and withdrawal of access is always achieved by disabling the account.
 
-> **[SCREENSHOT 2]**
+> **[SCREENSHOT 2 · `docs/assets/screenshots/02-users.png`]**
+> Users list with inline role and status controls.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Setup and Configuration
 
@@ -459,7 +471,12 @@ own analysis. Metadata files already held in xMart are reachable from the DMS in
 observation or country they relate to, so supporting documentation does not require leaving the
 application.
 
-> **[SCREENSHOT 3]**
+> **[SCREENSHOT 3 · `docs/assets/screenshots/03-setup.png`]**
+> Setup module showing the component tabs and a component list.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Workbook Management
 
@@ -523,7 +540,12 @@ open. Workbook data can be exported to Excel with values exported as values and 
 formulas, so an exported workbook remains a working document. Quality check rules can also be run
 directly from the workbook against the data in view, with failing cells highlighted where they sit.
 
-> **[SCREENSHOT 4]**
+> **[SCREENSHOT 4 · `docs/assets/screenshots/04b-workbook-metadata.png`]**
+> Workbook with frozen headers, filter chips, calculated rows shown distinctly, and the metadata panel open beside the grid.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Formula Management and Calculation Engine
 
@@ -568,7 +590,12 @@ condition that was applied, and the chain of other indicators that will change i
 For a system whose outputs are published internationally, being able to explain a number is as
 important as calculating it.
 
-> **[SCREENSHOT 5]**
+> **[SCREENSHOT 5 · `docs/assets/screenshots/05-formulas.png`]**
+> Formula management with the predefined indicator formulas and their conditions.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Quality Checks
 
@@ -607,7 +634,12 @@ alongside the tabular detail and a download in Excel or CSV. Every finding links
 observation that produced it. Rule configurations can be exported and imported, which supports review
 outside the system and moving a configuration between environments.
 
-> **[SCREENSHOT 6]**
+> **[SCREENSHOT 6 · `docs/assets/screenshots/06-quality-checks.png`]**
+> Quality check rule library, with rule origin visually distinguished.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Reports and Analytics
 
@@ -653,7 +685,12 @@ own currency rather than a generic one. Where the contributions to a total arriv
 currency, the report produces no figure at all, because adding pesos to yen is meaningless and an
 anonymous unit label would let exactly that mistake through looking perfectly correct.
 
-> **[SCREENSHOT 7]**
+> **[SCREENSHOT 7 · `docs/assets/screenshots/07-report-builder.png`]**
+> Report builder with the field areas and live preview.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Data and Metadata Versioning
 
@@ -673,7 +710,12 @@ the record complete for audit purposes. Version comparison also feeds the qualit
 concerned with growth between two versions of the data, so versioning serves validation as well as
 recovery.
 
-> **[SCREENSHOT 8]**
+> **[SCREENSHOT 8 · `docs/assets/screenshots/08-version-history.png`]**
+> Version history for a single observation, with restore.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Notifications
 
@@ -699,14 +741,20 @@ or a quality check result, it carries a working link to it. The reporting due da
 raise reminders as dates approach and pass, which is what turns the follow up configuration into an
 active process rather than a reference table someone has to remember to consult.
 
-> **[SCREENSHOT 9]**
+> **[SCREENSHOT 9 · `docs/assets/screenshots/09-notifications.png`]**
+> Notifications module: event catalogue and subscriptions.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Integration with WHO xMart
 
 Integration with xMart is not a feature at the edge of this system. It is the mechanism by which the
 system holds its data, and the requirements define the exchange in both directions.
 
-> **[FIGURE 3]**
+> **[FIGURE 3 · `docs/assets/figure3-xmart-integration.png`]**
+> DMS and xMart integration model.
 
 Whenever the DMS needs to display or process Health Accounts information it retrieves that information
 from xMart through the secured xMart API. This covers observations for the Workbook, the configuration
@@ -773,7 +821,12 @@ orchestration and the retrieval API, is implemented in the DMS, where that kind 
 existing familiarity with the xMart OData API and the Model Uploader means this assessment can be
 confirmed and refined quickly during discovery rather than being settled after development has started.
 
-> **[SCREENSHOT 10]**
+> **[SCREENSHOT 10 · `docs/assets/screenshots/10-integration.png`]**
+> xMart integration: synchronisation status and the API call log.
+>
+> *Indicative prototype view illustrating the proposed design based on Argusoft's current
+> understanding. Not a final design, subject to revision following requirements finalization
+> with WHO stakeholders.*
 
 #### Legacy Data and Formula Migration
 
@@ -1013,10 +1066,28 @@ the system.
 - **Ten screenshots**, one per module that has a screen in the prototype. The Annex 3 retrieval API
   view is covered inside the Integration screenshot.
 
+### Figures and screenshots
+
+All captured. Figures are in `docs/assets/`, screenshots in `docs/assets/screenshots/`, taken from
+the hosted prototype in light theme at 3200x2000 pixels, signed in as DMS Administrator. Re-run with
+`node docs/diagrams/capture-screenshots.mjs`.
+
+Ten are placed in the text. Five more were captured and are available if you would rather use them,
+or want a second image in a section:
+
+| Spare | Shows |
+|---|---|
+| `02b-role-permissions.png` | The role permission matrix with the capability preview |
+| `04-workbook.png` | The workbook without the metadata panel, so the grid is wider |
+| `06b-quality-report.png` | A quality check findings report rather than the rule list |
+| `07b-reports-list.png` | The reports list with favourites, instead of the builder |
+| `10b-retrieval-api.png` | The data retrieval API screen with a generated request and CSV output |
+
 ### Still open
 
-1. **Screenshots are not yet captured.** Each callout needs the standing caption agreed earlier:
-   *"Indicative prototype view illustrating the proposed design based on Argusoft's current
-   understanding. Not a final design, subject to revision following requirements finalization with WHO
-   stakeholders."*
+1. **The prototype prints use case codes on screen in a few places.** The version history dialog in
+   `08-version-history.png` reads "up to 10 prior versions (UC044)". Since the prose no longer carries
+   use case numbers, a reader may notice the inconsistency. Three options: leave it, crop the caption
+   line out of that screenshot, or remove the codes from the prototype UI and recapture. Recapturing
+   is about fifteen minutes of work.
 2. **Development Timeline** remains empty, as agreed.
