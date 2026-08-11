@@ -1,0 +1,101 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_base.css"></head>
+<body>
+
+<div class="fig-title">Health Accounts Data Management System — Functional Landscape</div>
+<div class="fig-sub">User communities, functional modules, shared platform services and the systems with which the DMS exchanges data.</div>
+
+<!-- USERS -->
+<div class="band">
+  <div class="band-title">Users <span class="sub">authenticated through WHO Entra ID single sign-on · HLR4, HLR5</span></div>
+  <div class="row">
+    <div class="pill"><b>WHO Health Accounts team (HQ)</b>Data consolidation, validation, calculation and publication</div>
+    <div class="pill"><b>Regional &amp; Country Offices</b>Country data review and follow-up, scoped to their countries</div>
+    <div class="pill"><b>External users (Entra ID guests)</b>Country focal points and partners, scoped access</div>
+    <div class="pill"><b>Administrators</b>Configuration, permissions, quality rules and thresholds</div>
+  </div>
+</div>
+
+<div class="flow"><span>▼ &nbsp; Single application home site &nbsp;·&nbsp; navigation filtered by role and permission &nbsp; UC001, UC002</span></div>
+
+<!-- MODULES -->
+<div class="band">
+  <div class="band-title">DMS functional modules</div>
+  <div class="row" style="margin-bottom:12px">
+    <div class="card"><h4>1 · Home &amp; Dashboard</h4><p>Reporting round status, publication readiness, quality findings, completeness and activity.</p><span class="uc">HLR2, HLR3 · UC001–UC003.1</span></div>
+    <div class="card"><h4>2 · Users &amp; Roles</h4><p>Access granting, role assignment, configurable permissions, country restrictions.</p><span class="uc">HLR4–HLR6 · UC004–UC012</span></div>
+    <div class="card"><h4>3 · Setup &amp; Configuration</h4><p>Countries, currencies, classifications, crosses, metadata fields, formulas, groups.</p><span class="uc">HLR7 · UC013–UC030</span></div>
+  </div>
+  <div class="row" style="margin-bottom:12px">
+    <div class="card"><h4>4 · Workbook</h4><p>Spreadsheet-like view and edit, copy/paste/undo, inline metadata, series tools, locking.</p><span class="uc">HLR8, HLR9 · UC031–UC034</span></div>
+    <div class="card"><h4>5 · Formula Engine</h4><p>Parsing, dependency resolution, null-condition handling, per-country overrides.</p><span class="uc">HLR8 · UC029, UC030, UC060</span></div>
+    <div class="card"><h4>6 · Reports &amp; Analytics</h4><p>Report builder, data tracking, six-language labels, Excel export, background jobs.</p><span class="uc">HLR10, HLR21 · UC035–UC042</span></div>
+  </div>
+  <div class="row">
+    <div class="card"><h4>7 · Quality Checks</h4><p>Rule library, configurable thresholds, country exclusions, run from workbook, reports.</p><span class="uc">HLR15 · UC047–UC055</span></div>
+    <div class="card"><h4>8 · Versioning</h4><p>View, compare and restore up to ten versions; dataset restore as at a date.</p><span class="uc">HLR12 · UC043, UC044</span></div>
+    <div class="card"><h4>9 · Notifications</h4><p>Event-driven in-app notifications, country and variable preferences, subscriptions.</p><span class="uc">HLR18 · UC023, UC042, UC058, UC059</span></div>
+  </div>
+</div>
+
+<div class="flow"><span>▼ &nbsp; shared by every module — implemented once, applied consistently</span></div>
+
+<!-- PLATFORM SERVICES -->
+<div class="band">
+  <div class="band-title">Shared platform services</div>
+  <div class="pills">
+    <div class="pill"><b>Authentication &amp; authorization</b>Entra ID SSO, roles, country scoping</div>
+    <div class="pill"><b>Calculation engine</b>Parser, dependency graph, evaluation</div>
+    <div class="pill"><b>Quality check engine</b>Rule evaluation and outcomes</div>
+    <div class="pill"><b>Notification service</b>Event catalogue and delivery</div>
+    <div class="pill"><b>Job scheduler</b>Background runs, retry, progress</div>
+    <div class="pill"><b>Audit logging</b>Who changed what, and when</div>
+    <div class="pill accent"><b>xMart integration layer</b>All warehouse traffic, one boundary</div>
+  </div>
+</div>
+
+<div class="flow"><span>▼ &nbsp; data</span></div>
+
+<!-- DATA -->
+<div class="band">
+  <div class="band-title">Data <span class="sub">HLR11 — the warehouse and the application store are distinct</span></div>
+  <div class="row">
+    <div class="card teal" style="flex:1.15">
+      <h4>WHO xMart — Health Accounts data warehouse</h4>
+      <p>The authoritative record: observations and their values, observation metadata, configuration and reference data, version history, and the legacy formulas imported as metadata. Reached only through its secured API.</p>
+      <span class="uc">HLR11, HLR13, HLR14 · UC045, UC046, UC056</span>
+    </div>
+    <div class="card">
+      <h4>DMS local database — operational store</h4>
+      <p>Users, roles, permissions and country restrictions · quality check and report definitions · user preferences · background job state · edit locks · notifications · application audit log · cached reference data.</p>
+      <span class="uc">HLR11</span>
+    </div>
+  </div>
+</div>
+
+<div class="flow"><span>▼ &nbsp; xMart exchanges data with the wider Health Accounts ecosystem</span></div>
+
+<!-- EXTERNAL -->
+<div class="band">
+  <div class="band-title">Health Accounts ecosystem <span class="sub">connected to xMart — existing pipelines are outside DMS development scope</span></div>
+  <div class="row">
+    <div class="pill gray"><b>eDamis</b>Country submissions via SFTP</div>
+    <div class="pill gray"><b>HAPT</b>API</div>
+    <div class="pill gray"><b>OneDrive / internal folder</b>HAQ, Mini-HAQ, self-created files</div>
+    <div class="pill gray"><b>WB / IMF / UN sources</b>Macro-economic series</div>
+    <div class="pill amber"><b>Old DMS</b>One-off migration · UC060</div>
+    <div class="pill gray"><b>GHED Data Explorer</b>Publication</div>
+    <div class="pill gray"><b>GHO database</b>Publication</div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="key"><span class="swatch sw-blue"></span> DMS modules</div>
+  <div class="key"><span class="swatch sw-violet"></span> Shared platform services</div>
+  <div class="key"><span class="swatch sw-teal"></span> WHO xMart — authoritative Health Accounts data</div>
+  <div class="key"><span class="swatch sw-accent"></span> Integration boundary</div>
+  <div class="key"><span class="swatch sw-amber"></span> One-off migration</div>
+  <div class="key"><span class="swatch sw-gray"></span> Existing systems — outside DMS development scope</div>
+</div>
+
+</body></html>

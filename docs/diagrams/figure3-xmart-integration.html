@@ -1,0 +1,288 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<style>
+  .lanes { display: flex; gap: 0; align-items: stretch; }
+  .lane { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+  .lane.hub { flex: 1.05 1 0; }
+  .conn {
+    flex: 0 0 116px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 26px;
+    padding: 0 6px;
+  }
+  .conn .a { text-align: center; width: 100%; }
+  .conn .a .lbl {
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: .3px;
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  .conn .a .bar {
+    height: 2px;
+    background: var(--accent);
+    position: relative;
+    border-radius: 1px;
+  }
+  .conn .a .bar::after {
+    content: '';
+    position: absolute;
+    top: -4px; right: -1px;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--accent);
+  }
+  .conn .a.rtl .bar::after {
+    right: auto; left: -1px;
+    border-left: 0;
+    border-right: 8px solid var(--accent);
+  }
+  .conn .a .note { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+  .conn.gray .a .lbl { color: var(--muted); }
+  .conn.gray .a .bar { background: var(--gray); }
+  .conn.gray .a .bar::after { border-left-color: var(--gray); }
+
+  .hubbox {
+    border: 1px solid var(--teal);
+    border-top: 3px solid var(--teal);
+    border-radius: 8px;
+    background: #F2F8F7;
+    padding: 14px 15px 15px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .hubbox h3 {
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 15px;
+    color: var(--teal-dk);
+    margin-bottom: 3px;
+  }
+  .hubbox .cap { font-size: 11px; color: var(--muted); margin-bottom: 11px; }
+  .hubbox .fn {
+    background: var(--white);
+    border: 1px solid #DCEAE7;
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 11.5px;
+    margin-bottom: 7px;
+    line-height: 1.35;
+  }
+
+  .dmsbox {
+    border: 1px solid var(--blue);
+    border-top: 3px solid var(--blue);
+    border-radius: 8px;
+    background: #F4F7FC;
+    padding: 14px 15px 15px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .dmsbox h3 {
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 15px;
+    color: var(--blue-dk);
+    margin-bottom: 3px;
+  }
+  .dmsbox .cap { font-size: 11px; color: var(--muted); margin-bottom: 11px; }
+  .dmsbox .fn {
+    background: var(--white);
+    border: 1px solid #DEE6F3;
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 11.5px;
+    margin-bottom: 7px;
+    line-height: 1.35;
+  }
+  .dmsbox .fn:last-child { margin-bottom: 0; }
+  .fn b {
+    display: block;
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 11.5px;
+    color: var(--heading);
+  }
+
+  .srcbox {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #FAFAFC;
+    padding: 14px 14px 15px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .srcbox .s {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gray);
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 11px;
+    line-height: 1.35;
+    margin-bottom: 7px;
+    color: var(--muted);
+  }
+  .srcbox .s.amber { border-left-color: var(--amber); color: var(--text); }
+  .srcbox .s b { display: block; font-family: 'Roboto', Arial, sans-serif; font-size: 11.5px; color: var(--heading); }
+
+  /* Pushed to the foot of its lane so the box does not end in dead space when the
+     neighbouring lanes are taller. */
+  .scope-note {
+    margin-top: auto;
+    padding-top: 9px;
+    font-size: 10.5px;
+    color: var(--muted);
+    line-height: 1.4;
+    border-top: 1px dashed var(--gray);
+  }
+  .hubbox .scope-note { border-top-color: #C8DED9; }
+
+  .annex {
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    background: var(--bg);
+    padding: 13px 16px 14px;
+  }
+  .annex h4 {
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 13px;
+    color: var(--heading);
+    margin-bottom: 7px;
+  }
+  .annex .specs { display: flex; flex-wrap: wrap; gap: 7px; }
+  .annex .spec {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 9px;
+    font-size: 10.5px;
+    color: var(--text);
+  }
+  .outs { margin-top: 14px; }
+</style></head>
+<body>
+
+<div class="fig-title">DMS–xMart Integration Model</div>
+<div class="fig-sub">xMart remains the Health Accounts data warehouse; the DMS retrieves what it needs, returns what it changes, and exposes a retrieval API that xMart calls.</div>
+
+<div class="lanes">
+
+  <!-- SOURCES -->
+  <div class="lane">
+    <div class="band-title">Data sources</div>
+    <div class="srcbox">
+      <div class="s"><b>eDamis</b>Country JHAQ submissions (EU) — SFTP</div>
+      <div class="s"><b>HAPT</b>API</div>
+      <div class="s"><b>OneDrive / internal folder</b>JHAQ (OECD non-EU), HAQ, Mini-HAQ</div>
+      <div class="s"><b>Self-created files</b>World Bank, IMF, UN macro series</div>
+      <div class="s amber"><b>Old DMS (SQL Server)</b>Legacy data and ~70,000 formulas — one-off migration · UC060</div>
+      <div class="scope-note"><b>Existing recurring pipelines are already in place and are outside DMS development scope.</b> They are shown for context only.</div>
+    </div>
+  </div>
+
+  <div class="conn gray">
+    <div class="a">
+      <div class="lbl">API / SFTP<br>ingestion</div>
+      <div class="bar"></div>
+      <div class="note">Existing — not DMS scope</div>
+    </div>
+    <div class="a">
+      <div class="lbl">One-off<br>migration</div>
+      <div class="bar"></div>
+      <div class="note">UC060</div>
+    </div>
+  </div>
+
+  <!-- XMART -->
+  <div class="lane hub">
+    <div class="band-title">WHO xMart</div>
+    <div class="hubbox">
+      <h3>Health Accounts data warehouse</h3>
+      <div class="cap">The authoritative record · HLR11, HLR13</div>
+      <div class="fn"><b>Format validation &amp; transformation</b>Applied on ingestion</div>
+      <div class="fn"><b>Storage — observations &amp; metadata</b>Long-format observation table</div>
+      <div class="fn"><b>Configuration &amp; reference data</b>Countries, currencies, classifications, crosses, metadata fields, formulas</div>
+      <div class="fn"><b>Native data versioning</b>The substrate for UC043 / UC044 · HLR12</div>
+      <div class="fn"><b>Views &amp; derived structures</b>For reporting and extraction</div>
+      <div class="fn"><b>Legacy formulas as metadata</b>Available for inquiry from the new DMS · UC060</div>
+      <div class="scope-note"><b>Functionality delivered within xMart</b> wherever it saves effort and cost — HLR16 · UC056.</div>
+    </div>
+  </div>
+
+  <div class="conn">
+    <div class="a">
+      <div class="lbl">UC045 &nbsp;▶<br>xMart → DMS</div>
+      <div class="bar"></div>
+      <div class="note">Retrieval for workbooks, reports, setup, quality checks and versions. Filtered, paged, streamed. Values as values, formulas as formulas.</div>
+    </div>
+    <div class="a rtl">
+      <div class="lbl">◀ &nbsp;UC046<br>DMS → xMart</div>
+      <div class="bar"></div>
+      <div class="note">Observation and metadata edits, and Setup changes — with the author's user id. Explicit save; failures queued for retry.</div>
+    </div>
+  </div>
+
+  <!-- DMS -->
+  <div class="lane">
+    <div class="band-title">New DMS</div>
+    <div class="dmsbox">
+      <h3>Business functionality &amp; user experience</h3>
+      <div class="cap">This project</div>
+      <div class="fn"><b>Workbook</b>View, edit, copy/paste/undo, metadata, series tools, locking</div>
+      <div class="fn"><b>Calculation engine</b>Formulas, dependencies, null conditions</div>
+      <div class="fn"><b>Quality checks</b>Rules, thresholds, exclusions, reports</div>
+      <div class="fn"><b>Reports &amp; analytics</b>Builder, tracking, six languages, Excel</div>
+      <div class="fn"><b>Users, permissions, notifications</b>Entra ID SSO, roles, country scope</div>
+      <div class="fn" style="border-color:#DEE6F3;background:#F8FAFE"><b>DMS local database</b>Operational data only — HLR11</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ANNEX 3 -->
+<div class="annex">
+  <h4>Data Retrieval API — exposed by the DMS, called by xMart &nbsp;·&nbsp; RFP Annex 3</h4>
+  <div class="specs">
+    <div class="spec">HTTP GET</div>
+    <div class="spec">CSV output (preferred), JSON additionally</div>
+    <div class="spec">Filter on country code</div>
+    <div class="spec">Filter on year or year range</div>
+    <div class="spec">DMS internal identifier returned</div>
+    <div class="spec">Paging — 100,000 record reference page size</div>
+    <div class="spec">UTC <i>LastModified</i>, range-filterable</div>
+    <div class="spec">Reflects inserts, updates <i>and</i> deletes</div>
+    <div class="spec">Soft-delete retrieval via <i>IsDeleted</i></div>
+    <div class="spec">Full unfiltered retrieval</div>
+    <div class="spec">Streaming</div>
+    <div class="spec">OAuth 2.0</div>
+    <div class="spec">HTTPS only</div>
+  </div>
+</div>
+
+<!-- OUTPUTS -->
+<div class="band outs">
+  <div class="band-title">Downstream publication <span class="sub">consumers of xMart — outside DMS development scope</span></div>
+  <div class="row">
+    <div class="pill gray"><b>New GHED Data Explorer</b>Global Health Expenditure Database publication</div>
+    <div class="pill gray"><b>GHO database</b>Global Health Observatory publication</div>
+    <div class="pill gray"><b>Further xMart consumers</b>Analytical and reporting use across WHO</div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="key"><span class="swatch sw-teal"></span> WHO xMart — authoritative data</div>
+  <div class="key"><span class="swatch sw-blue"></span> New DMS — this project</div>
+  <div class="key"><span class="swatch sw-accent"></span> Integration in DMS scope</div>
+  <div class="key"><span class="swatch sw-amber"></span> One-off migration</div>
+  <div class="key"><span class="swatch sw-gray"></span> Existing pipelines and consumers — outside DMS development scope</div>
+</div>
+
+</body></html>
