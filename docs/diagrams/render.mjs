@@ -29,7 +29,10 @@ const FIGURES = [
   ['figure1-functional-landscape', 'Figure 1 — Functional landscape'],
   ['figure2-solution-architecture', 'Figure 2 — Solution architecture'],
   ['figure3-xmart-integration', 'Figure 3 — DMS–xMart integration'],
+  ['figure4-app-architecture', 'Figure 4 — App architecture'],
 ];
+
+const WIDE = { 'figure4-app-architecture': 1500 };
 
 const browser = await chromium.launch();
 const page = await browser.newPage({
@@ -45,6 +48,8 @@ const PAGE_TEXT_IN = 9.25;          // Letter, 1in bottom / 0.75in top margin
 // Reported for information only — see the note in the loop below.
 
 for (const [slug, label] of FIGURES) {
+  const cssWidth = WIDE[slug] ?? 1300;
+  await page.setViewportSize({ width: cssWidth, height: 1200 });
   await page.goto(pathToFileURL(join(here, `${slug}.html`)).href, { waitUntil: 'load' });
   // Web fonts are loaded from disk via @font-face; without this the first paint can
   // measure with the fallback metrics and the boxes come out the wrong height.
@@ -70,7 +75,11 @@ for (const [slug, label] of FIGURES) {
       );
       if (!ownsText) continue;
       const px = parseFloat(getComputedStyle(el).fontSize);
-      if (px > 0 && px < min) { min = px; tag = el.className || el.tagName; }
+      if (px > 0 && px < min) {
+        min = px;
+        // SVG elements expose className as an object, not a string.
+        tag = typeof el.className === 'string' && el.className ? el.className : el.tagName;
+      }
     }
     return {
       width: document.body.scrollWidth,
@@ -81,8 +90,8 @@ for (const [slug, label] of FIGURES) {
   });
 
   const kb = Math.round(statSync(out).size / 1024);
-  const printH = (height / 1300) * PLACED_IN;
-  const minPt = minPx * PT_PER_PX;
+  const printH = (height / cssWidth) * PLACED_IN;
+  const minPt = minPx * ((PLACED_IN * 72) / cssWidth);
 
   // Reported, not enforced. The dense design is deliberate — see the note at the head of
   // _base.css. The numbers are printed every run so the trade-off stays visible rather
