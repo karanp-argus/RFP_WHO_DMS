@@ -375,6 +375,12 @@ Do not promote it to "full RTL support" anywhere in the docs.
   the content column at 1024 and 768 and slides the whole page under the fixed sidebar.
   `verify:responsive` probes `document.scrollWidth` at five widths in both themes and names the
   offending element.
+- **`DialogContent` is a CSS grid, so a wide child needs `min-w-0` as well as its own scroll
+  container.** A grid item's default `min-width: auto` lets its *min-content* width widen the
+  column track past the dialog's `max-w-*`; every sibling then stretches with it and the whole
+  stack paints outside the dialog's rounded background, which is what the paste dialog did with a
+  metadata clip. `verify:responsive` cannot see this — it probes the page, and the page does not
+  scroll. Measure the overflow against `[data-slot="dialog-content"]`'s own rect.
 - **The static demo needs a deep-link rewrite.** `BrowserRouter` makes `/setup` a real path; a
   bare static server 404s on it. The build writes `404.html` and `scripts/serve-dist.mjs` does the
   rewrite properly. **`file://` cannot work** — the scheme blocks ES modules and has no path

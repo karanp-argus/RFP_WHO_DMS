@@ -248,6 +248,16 @@ const PAIRS = [
   { phase: 7, label: 'status text on canvas (pass)', fg: '--who-pass', bg: '--who-page-bg', min: 4.5 },
   { phase: 7, label: 'border on canvas', fg: '--who-border', bg: '--who-page-bg', min: 1.0,
     note: 'measured, not gated: card edges are reinforced by the card shadow' },
+
+  /* --- Phase 8 and after --------------------------------------------------- */
+  /*
+   * The canvas colour doubles as a recessed well inside a dialog — the paste
+   * dialog's source/target block and its clipboard preview, the series-tools
+   * preview header. That puts heading-weight text on `--who-page-bg`, which no
+   * earlier pair covered: canvas had only been measured against body, muted and
+   * status text.
+   */
+  { phase: 8, label: 'heading on canvas', fg: '--who-heading', bg: '--who-page-bg', min: 4.5 },
 ]
 
 /* --------------------------------------------------------------------------
