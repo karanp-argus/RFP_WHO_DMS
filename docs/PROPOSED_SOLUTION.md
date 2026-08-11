@@ -1,1129 +1,1022 @@
 # Proposed Solution
 
-> **Draft for review — Step 2 of the agreed sequence.**
-> This text is written to be inserted under the existing empty *Proposed Solution* Heading 2 in
+> **Draft for review.** To be inserted under the existing empty *Proposed Solution* Heading 2 in
 > `Technical Proposal_Argusoft India Ltd_WHO_Data_Management_System.docx`, between *Methodology*
 > and *Proposed Work Plan*.
 >
-> Heading levels map as: `##` → Heading 2 (the section itself), `###` → Heading 3,
-> `####` → Heading 4. Figure and screenshot callouts are marked `[FIGURE n]` and
-> `[SCREENSHOT n]` and are produced in Steps 3 and 4.
+> Heading mapping: `##` is Heading 2, `###` is Heading 3, `####` is Heading 4.
+> Figure and screenshot callouts are marked `[FIGURE n]` and `[SCREENSHOT n]`.
+> Delete the *Notes for review* section at the foot before inserting.
 
 ---
 
-## Solution Overview
-
-In response to the Terms of Reference and the Functional Requirements, Argusoft proposes a
-centralized, web-based **Health Accounts Data Management System (DMS)** built upon WHO's existing
-xMart data warehouse. The solution replaces the legacy standalone application with a modern,
-configurable, multi-user platform that supports the complete lifecycle of National Health Accounts
-data — collection, consolidation, validation, calculation, quality assurance, versioning, reporting
-and publication — for more than 194 countries with time series extending back to 2000.
-
-The proposed solution is designed around a principle stated in the Functional Requirements
-themselves: **xMart remains the main data warehouse for Health Accounts data, and DMS provides the
-business functionality and user experience on top of it.** DMS retrieves observations, metadata,
-formulas, configuration and version information from xMart through its secured API whenever data is
-required for display or processing, and returns processed results, user edits and configuration
-changes to xMart for storage. In line with HLR11, DMS additionally maintains its **own local
-database** for operational data that belongs to the application rather than to the Health Accounts
-warehouse — user accounts and permissions, quality check and report definitions, saved user
-preferences, background job state, notifications, edit locks and application audit logs. This
-separation keeps a single authoritative source for Health Accounts data while giving the DMS the
-transactional store it needs to perform responsively and to support the collaborative, multi-user
-working model that the legacy system cannot.
-
-The solution is organized into nine functional modules accessible from a single application home
-site, each mapped directly to the high-level requirements and use cases of the Functional
-Requirements document:
-
-| # | Module | Primary requirements |
-|---|---|---|
-| 1 | Application Home & Dashboard | HLR2, HLR3 · UC001–UC003.1 |
-| 2 | User & Role Management | HLR4, HLR5, HLR6 · UC004–UC012 |
-| 3 | Setup & Configuration | HLR7 · UC013–UC030 |
-| 4 | Workbook Management | HLR8, HLR9 · UC031–UC034 |
-| 5 | Formula Management & Calculation Engine | HLR8 · UC029, UC030, UC060 |
-| 6 | Reports & Analytics | HLR10, HLR21 · UC035–UC042 |
-| 7 | Quality Checks | HLR15 · UC047–UC055 |
-| 8 | Data & Metadata Versioning | HLR12 · UC043, UC044 |
-| 9 | Notifications | HLR18 · UC023, UC042, UC058, UC059 |
-
-Underpinning these modules are the integration services that connect DMS to xMart (HLR13, HLR14,
-HLR16 · UC045, UC046, UC056), the data retrieval API defined in Annex 3 of the RFP, and the
-one-off migration of legacy formulas described in HLR19 and UC060.
-
-The solution will be delivered through the phased approach required by HLR20 and UC061: a Pilot
-covering the 41 use cases flagged for Pilot priority, followed by the incremental delivery of the
-remaining functionality according to the agreed priority order.
-
-### Working prototype
-
-To validate our understanding of the requirements before development begins — and to give the WHO
-Health Accounts team something concrete to react to rather than a written description alone —
-Argusoft has already developed a **working, interactive prototype of the proposed DMS**, available
-for evaluation at:
-
-> **https://whohadms.argusservices.in/**
-
-The prototype implements the application shell, the Setup module, the Workbook with its
-calculation engine, Quality Checks, Reports, versioning, the dashboard and the Annex 3 data
-retrieval interface, working against a representative Health Accounts dataset. The screenshots
-throughout this section are taken from it. It demonstrates the interaction model, information
-architecture and visual design we propose, and it evidences that the more demanding requirements in
-this RFP — the Excel-like workbook, the formula dependency engine, configurable quality checks and
-multi-dimensional reporting — have been thought through in practice rather than in principle.
-
-**The prototype represents Argusoft's proposed solution based on our current understanding of the
-Terms of Reference, the Functional Requirements, the API specifications and the clarifications
-issued. It is a design and validation instrument, not the delivered product, and the screens shown
-in this section are not the final design.** During the requirements finalization and design phases,
-Argusoft will conduct detailed workshops with the WHO Health Accounts team, study the existing DMS
-and its working practices, and establish a precise understanding of the expected outcomes. The
-prototype will then be updated to reflect that input, and the resulting design will be submitted for
-WHO's review and approval before development begins, as set out in Phase 2 of the Work Plan.
-
-We have chosen to invest in a working prototype ahead of the bid precisely so that this conversation
-starts from something WHO can use and challenge, rather than from a written description. Every
-element of it — the navigation, the workbook layout, the report builder, the dashboard content — is a
-proposal open to revision, and we expect it to change as a result of stakeholder input.
-
----
-
-## Functional Landscape
-
-The diagram below presents the functional landscape of the proposed Health Accounts Data
-Management System: the user communities it serves, the nine functional modules, the shared
-platform services on which those modules rely, and the external systems with which the DMS
-exchanges data.
-
-> **[FIGURE 1 — Functional landscape / module map]**
-
-Users reach every module from a single application home site following authentication through WHO
-Entra ID. Regular users and Administrator users see the same navigation, with capabilities filtered
-according to the permissions attached to their role. The modules share a common set of platform
-services — authentication and authorization, the calculation engine, the notification service, the
-job scheduler, audit logging and the xMart integration layer — so that behaviour such as permission
-enforcement, versioning and event notification is implemented once and applied consistently
-everywhere.
-
----
-
-## Solution Architecture
-
-Argusoft proposes an **n-tier, service-oriented architecture** with a clear separation between the
-presentation, business logic and data access layers. This is the same architectural pattern we have
-applied successfully across WHO and government enterprise platforms, and it is chosen here for four
-specific reasons relevant to this assignment:
-
-- **Independent evolution of the user experience and the business rules.** The Health Accounts
-  domain is stable but the working practices around it are not; separating the layers allows the
-  workbook or reporting experience to be refined without disturbing the calculation or validation
-  logic beneath it.
-- **A single, controlled boundary to xMart.** All communication with xMart is concentrated in one
-  integration layer rather than distributed across the application, so that a change to an xMart API
-  contract, authentication method or data model is absorbed in one place.
-- **Independent scalability.** The API tier can be scaled to absorb the year-end peak, when full
-  quality check processing runs across all countries, without over-provisioning the rest of the
-  system.
-- **Testability and long-term maintainability.** Business rules expressed in a distinct layer can be
-  unit-tested against known expected results — which matters greatly for a system whose credibility
-  rests on the correctness of its calculated indicators.
-
-> **[FIGURE 2 — Solution architecture diagram]**
-
-### Presentation Layer
-
-The presentation layer is a responsive, browser-based single-page application delivering the
-complete DMS user experience: the home dashboard, the nine functional modules, the workbook grid,
-the report builder and the administration screens. It communicates with the server exclusively
-through the API layer, holds no business rules of its own, and enforces no security decision that
-is not also enforced on the server.
-
-Two characteristics of the Health Accounts working model shape this layer in particular.
-
-First, **the Workbook is the primary working surface and must behave like a spreadsheet.** Health
-Accounts analysts have used a spreadsheet-like tool for years, and the requirement in HLR8 for
-Excel-like viewing, editing, formula insertion, copy, paste and undo is a requirement about muscle
-memory as much as about function. The presentation layer therefore uses a virtualized data grid
-capable of range selection, keyboard navigation, multi-cell copy and paste, and an undo stack, with
-frozen header rows and columns so that the year and variable context never scrolls out of view. The
-grid renders only the cells within the viewport, which keeps interaction responsive on large
-country time series.
-
-Second, **the interface must degrade gracefully across the volumes described in UC057.** Data
-requests are paged and filtered on the server; the browser is never asked to hold a result set that
-approaches the stated maximum. Long-running operations — full quality check runs, complex report
-generation, bulk exports — are dispatched to background processing and reported back through
-notifications rather than blocking the interface.
-
-The interface will be delivered in English, in accordance with HLR21, with report output available
-in all six official WHO languages as described in §7.4.
-
-### API and Business Logic Layer
-
-The API layer exposes the application's functionality as a set of secured, versioned service
-endpoints consumed by the presentation layer and, where appropriate, by other WHO systems. It also
-hosts the business logic of the DMS — the rules that make the system a Health Accounts tool rather
-than a generic data editor:
-
-- **Authorization and data scoping.** Every request is authorized against the caller's role and, for
-  regular users whose access is restricted to specific countries (UC009), against their country
-  scope. Authorization is applied at the service boundary so that it cannot be bypassed.
-- **The calculation engine.** Parsing, dependency resolution and evaluation of predefined and custom
-  formulas, including the null-handling conditions attached to each formula. This is described in
-  detail in §5.5.
-- **The quality check engine.** Evaluation of predefined and custom rules against a selected country
-  or group of countries, producing the pass, fail, warning and error outcomes defined in UC054.
-- **Versioning and change capture.** Recording the authorship and time of every change and assembling
-  the version histories that UC043 and UC044 expose for comparison and restoration.
-- **Orchestration of xMart exchange.** Deciding what must be retrieved, what must be written back and
-  when, and reconciling the results.
-- **Background job management.** Queueing, executing, monitoring and reporting on long-running
-  operations, with restart and retry behaviour.
-
-Services are designed to be stateless so that the tier can be scaled horizontally, with shared state
-held in the database or cache rather than in server memory.
-
-### Data Access and Integration Layer
-
-The data access layer abstracts every underlying store behind a consistent internal interface, so
-that the business logic above it is not written against a particular database technology or a
-particular version of the xMart API. It comprises three elements:
-
-- **The xMart integration client**, which handles authentication, request construction, paging,
-  filtering, retry and error handling for all traffic to and from xMart, and which maps between the
-  xMart long-format observation structure and the DMS domain model.
-- **The DMS local database access components**, providing persistence for the operational data
-  described below.
-- **The caching layer**, which holds frequently used and slowly changing reference data — country and
-  currency lists, classifications and categories, crosses, metadata field definitions and formula
-  definitions — so that routine screens do not generate repeated calls to xMart for data that has not
-  changed. Cache invalidation is driven by configuration changes made in the Setup module and by the
-  synchronization process, and cache lifetimes will be agreed with WHO during design.
-
-Using an abstraction at this layer also protects the investment: should WHO later extend the xMart
-platform, change an ingestion mechanism or introduce an additional source, the change is confined to
-this layer.
-
-### The DMS Local Database and the xMart Boundary
-
-HLR11 establishes both halves of the storage model, and the division between them is one of the more
-consequential design decisions in this solution. Argusoft proposes the following boundary, to be
-confirmed and refined with WHO during the design phase.
-
-**Held in xMart — the authoritative Health Accounts record:**
-
-- All observations: values, the dimension tuple that identifies them, and their metadata fields
-  (sources, comments, web links, estimation method, data type).
-- Configuration and reference data: countries and their attributes, currencies, classifications and
-  categories, crosses, metadata field definitions and formula definitions.
-- The version history of observations, datasets and metadata, on which UC043 and UC044 build.
-- The legacy formulas imported from the old DMS as plain-text metadata under UC060.
-
-**Held in the DMS local database — operational data belonging to the application:**
-
-- User accounts, role assignments, role permission configuration and country restrictions.
-- Quality check rule definitions, their configuration values, country exclusions and run history.
-- Report definitions, layouts, user favourites and the user-customized report list.
-- Saved user preferences: workbook selections, column ordering, metadata field display order.
-- Edit locks supporting the concurrency control required by HLR9 and UC033.
-- The background job queue, job status and generated output artefacts.
-- Notification definitions, subscriptions and the user inbox.
-- The application audit log, and the cached reference data described above.
-
-Two properties follow from this design and are worth stating explicitly. First, **no Health Accounts
-value is authoritative anywhere except xMart** — the local database never becomes a competing copy
-of the warehouse, which is what makes the GHED and GHO publication chain downstream of xMart safe.
-Second, **the DMS remains responsive and usable for configuration and administration work
-independently of xMart call latency**, because the data those screens operate on is local.
-
-Where WHO's review concludes that a particular category of operational data is better held in xMart
-— for example, if quality check rule definitions are to be shared with other xMart consumers — the
-boundary can be moved without architectural change, because both stores are reached through the same
-data access abstraction.
-
-### Cross-Cutting Services
-
-The following services are implemented once and consumed by every module:
-
-- **Authentication and single sign-on** through WHO Entra ID, covering both WHO internal users and
-  external users managed as Entra ID guest accounts, as required by HLR4 and HLR5.
-- **Authorization**, enforcing the two roles defined in HLR6, the configurable role permissions of
-  UC008 and the country restrictions of UC009.
-- **Audit logging**, capturing user identity, timestamp and action for every data modification,
-  configuration change, permission change, quality check run, report generation and integration
-  event.
-- **Notification services**, delivering the in-app, event-driven notifications required by HLR18.
-- **Job scheduling and background processing**, supporting quality check runs, report generation,
-  bulk exports and synchronization.
-- **Configuration management**, so that thresholds, rules, formulas, metadata fields and permissions
-  are changed through the interface by authorized users rather than through code changes and
-  releases.
-
----
-
-## DMS–xMart Integration Model
-
-Integration with xMart is not an interface at the edge of this solution; it is the mechanism by
-which the solution holds its data. HLR13 and HLR14 define the exchange in both directions, UC045 and
-UC046 give it its acceptance criteria, and Annex 3 of the RFP defines a further API that xMart will
-call on the DMS.
-
-> **[FIGURE 3 — DMS–xMart integration flow]**
-
-### Retrieval from xMart (UC045)
-
-Whenever the DMS must display or process Health Accounts information, it retrieves that information
-from xMart through the secured xMart API. This covers observations for the workbook, the
-configuration data behind the Setup module, the data underlying reports and quality checks, and
-version information.
-
-Retrieval is designed around three principles:
-
-- **Request only what the screen needs.** Requests are filtered by country, year range and the
-  variables in scope, so that a workbook opens by retrieving one bounded slice rather than a
-  country's full history.
-- **Page and stream large results.** Where a request legitimately spans a large volume — a year-end
-  quality check across all countries, or a multi-country report — retrieval is paged and processed
-  incrementally in the background rather than assembled in memory.
-- **Preserve the distinction between values and formulas.** As UC045 requires, values are transmitted
-  as values and formulas as formulas, so that a calculated cell arrives in the DMS as an expression
-  to be evaluated rather than as a static number.
-
-### Write-back to xMart (UC046)
-
-Changes made in the DMS are returned to xMart so that xMart remains the authoritative record. This
-covers observation values and metadata edited in the workbook, and changes made in the Setup module
-to countries, currencies, classifications, categories, crosses, metadata fields and formulas.
-
-Each write-back transmits the identity of the user who made the change, as UC046 requires, and again
-preserves values as values and formulas as formulas. The precise trigger for write-back — an
-explicit save action, leaving a screen, or a combination — is identified in UC046 as a decision to be
-taken at the start of the project; Argusoft's recommendation is an **explicit save with a clearly
-indicated unsaved-changes state**, because it gives the analyst a defined commit point, makes
-concurrent editing conflicts detectable at a known moment, and produces a version history whose
-entries correspond to deliberate user decisions rather than to incidental navigation. This will be
-confirmed with WHO during design.
-
-Write-back operations are transactional from the user's point of view: a save either succeeds in
-full or reports a failure that identifies the affected observations, and failed transmissions are
-queued for retry with the outcome surfaced to the user and to administrators through the integration
-monitoring screens described in §5.10.
-
-### Data Retrieval API for xMart (RFP Annex 3)
-
-In addition to consuming the xMart API, the DMS exposes a data retrieval API that xMart calls to
-extract DMS data. Argusoft will implement this to the specification in Annex 3:
-
-| Annex 3 requirement | Implementation |
-|---|---|
-| HTTP GET | GET endpoints, no side effects |
-| CSV output (preferred over JSON) | CSV as the default response format; JSON offered additionally |
-| Filtering on business primary keys | Filters on country code and on a single year or year range |
-| Return the DMS internal identifier | Internal record identifier included in every row |
-| Paging | Server-side paging designed for the Annex 3 reference page size of 100,000 records |
-| UTC `LastModified`, range-filterable | Maintained on every record and reflecting inserts, updates and deletes |
-| Ability to return all data unfiltered | Supported, through paged or streamed retrieval |
-| Soft-deleted record retrieval | Records soft-deleted and retrievable through an `IsDeleted` filter |
-| OAuth 2.0 | OAuth 2.0 authentication |
-| HTTPS only | Transport restricted to HTTPS |
-| Streaming (should-have) | Streamed responses for large extractions |
-| Non-primary-key filtering (nice-to-have) | Offered on agreed additional fields |
-
-Because the `LastModified` semantics and the soft-delete behaviour determine whether xMart can
-perform reliable incremental extraction, these are treated as first-class design requirements rather
-than as reporting conveniences: every mutation path in the DMS updates the timestamp, and deletion is
-implemented as a state change rather than a physical removal.
-
-> **[SCREENSHOT 1 — Prototype: Annex 3 data retrieval API screen, showing the generated request URL
-> and a returned CSV extract]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Functionality Delivered Within xMart (HLR16 · UC056)
-
-HLR16 and UC056 ask bidders to implement functionality within the xMart platform itself wherever
-doing so saves effort and cost, and state that WHO will give benefit to solutions that use xMart
-technology even partially. Argusoft has taken this seriously in shaping the architecture, and
-proposes the following division, to be confirmed during discovery when the current xMart
-configuration has been reviewed in detail:
-
-**Proposed for implementation within xMart:**
-
-- **Storage and the data model** for observations, metadata and configuration, using the existing
-  Health Accounts mart structure rather than replicating it in the DMS.
-- **Native data versioning**, on which UC043 and UC044 are built, using xMart's own version tracking
-  rather than a bespoke audit table in the DMS. HLR12 explicitly anchors versioning on "the data
-  versioning available in xMart".
-- **Format validation and transformation on ingestion**, which the To-Be process map already places
-  in xMart for data arriving from eDamis, HAPT, OneDrive and other sources.
-- **Views and derived structures** for reporting and extraction, where a view in xMart is cheaper and
-  faster than an equivalent query assembled in the DMS.
-- **Storage of the legacy formulas** imported under UC060 as metadata fields.
-- **The Model Uploader** for onboarding and updating data model definitions — a capability Argusoft
-  has used in production on the WHO Emergency Public Dashboard.
-
-**Proposed for implementation within the DMS:** the interactive workbook, the calculation engine,
+## Proposed Solution
+
+### Solution Overview
+
+In response to the requirements set out in the Terms of Reference and the Functional Requirements,
+we propose a centralized, web based Data Management System for Health Accounts, built upon WHO's
+existing xMart data warehouse. The application will serve as the single working environment for the
+WHO Health Accounts team and its colleagues in Regional and Country Offices, covering the full
+working cycle for country health expenditure data: bringing data together, checking it, calculating
+indicators, resolving quality issues, tracking what each country has reported, and preparing the
+year's figures for publication. Users will sign in with their WHO account through Entra ID, and
+external contributors will be supported as guest accounts under the same sign in path. A single API
+layer will carry every exchange with xMart and with any other WHO system that needs to read from the
+DMS, and the application will run on WHO Azure infrastructure sized for the year end peak.
+
+One point shapes almost every design decision that follows. The Functional Requirements are explicit
+that the main data warehouse for Health Accounts data stays in xMart, that the DMS calls the xMart
+API whenever it needs to display or process data, and that processed results are returned to xMart
+once they are complete. The same requirement then adds that the DMS is expected to have a local
+database of its own. We have taken both halves of that literally. Country health expenditure data,
+its metadata, the configuration behind it and its version history remain in xMart and are never
+duplicated as a second authoritative copy. The DMS local database holds what belongs to the
+application rather than to the warehouse: user accounts and permissions, quality check and report
+definitions, saved user preferences, background job state, edit locks, notifications and the
+application audit log. This division keeps one source of truth for the figures that eventually reach
+the Global Health Expenditure Database and the Global Health Observatory, while giving the
+application the transactional store it needs to stay responsive and to support several people working
+at once.
+
+The application will be built to perform well even when a request spans a large slice of the
+warehouse. Expected volumes range from a few dozen rows to a stated maximum of twenty five million,
+and a full quality check run at year end covers every country at once. To keep this comfortable we
+will combine server side filtering and paging with caching of the reference data that changes rarely,
+such as country and currency lists, classifications, crosses, metadata field definitions and formula
+definitions. **Redis** is our recommended cache for this, with cache entries cleared automatically
+when the corresponding value is edited in the Setup module. Long running work does not block the
+screen: full quality check runs, complex report generation and bulk exports are handed to a durable
+background job queue, and the user is told when the job finishes through an in app notification
+carrying a link to the result. Within the browser we will apply virtualized rendering, lazy loading of
+each module and prefetching of the data a user is most likely to open next, so that a workbook opens
+quickly regardless of how much history sits behind it.
+
+After a careful review of the scope of work, the Functional Requirements and the API specification,
+we propose an n-tier architecture for this project. The most important characteristic of this
+approach is the separation of the service and interface layers, which brings ease of maintenance and
+ease of extension. The pattern allows the application to grow without compromising performance or
+accuracy, and its service oriented design builds the application from loosely coupled, interoperable
+services that communicate through formal contracts independent of the underlying platform and
+programming language. The presentation tier itself is modelled on the MVC architecture.
+
+The MVC pattern suits this project particularly well because the core business rules of Health
+Accounts work are already documented in detail, which means they can be built, modified or extended
+in the business layer without touching any other layer. The proposed solution also uses ORM
+(Object-Relational Mapping) in the model so that the system stays database agnostic, and it places
+every call to xMart behind a single integration component so that a change to an xMart contract,
+authentication method or data structure is absorbed in one place rather than across the application.
+
+**Working Prototype**
+
+Rather than describe the proposed system in writing alone, we have built a working prototype of it and
+made it available for evaluation at **https://whohadms.argusservices.in/**. It covers the application
+shell, the Setup module, the Workbook with its calculation engine, Quality Checks, Reports, versioning,
+the dashboard and the data retrieval interface, running against a representative Health Accounts
+dataset. The screenshots throughout this section are taken from it.
+
+We want to be clear about what the prototype represents. It sets out our proposed solution based on our
+current understanding of the Terms of Reference, the Functional Requirements, the API specification and
+the clarifications issued. It is not the delivered product, and the screens shown in this section are
+not a final design. During the requirements finalization phase we will hold detailed workshops with the
+WHO Health Accounts team, study the existing DMS and the way the team works with it today, and build a
+precise understanding of the outcomes expected from the new system. The prototype will then be updated
+to reflect that input, and the resulting design will be submitted for WHO's review and approval before
+development begins, as set out in our work plan.
+
+We built it ahead of the bid for a practical reason. Design approval is the first milestone of this
+project, and a discussion about static wireframes is slower and less productive than a discussion about
+something a reviewer can click through and react to. Every part of it, including the navigation, the
+workbook layout, the report builder and the content of the dashboard, is a proposal open to revision,
+and we expect it to change once the team has spent time with it.
+
+**Functional Landscape**
+
+> **[FIGURE 1]**
+
+**Architecture Diagram**
+
+> **[FIGURE 2]**
+
+The application architecture will have the following layers.
+
+#### Front-end (Presentation Layer/Tier)
+
+The front-end, also known as the presentation layer, would handle the user interface and user
+experience for the Health Accounts Data Management System. It would consist of technologies like
+HTML, CSS and Javascript that can be rendered through a web browser on desktop and laptop devices.
+
+The front-end tier in a single page application (SPA) typically follows Model-View-Controller (MVC)
+architecture, which separates the concerns of the application into three distinct components: the
+data (model), the user interface (view), and the logic that binds the two (controller).
+
+The Model represents the data and the business logic of the application. It can retrieve data from
+the server via an API or manage data entered by the user.
+
+The View represents the user interface of the application. It is responsible for displaying the data
+to the user and collecting input from the user.
+
+The Controller is the component that sits between the Model and the View. It is responsible for
+receiving user input, updating the Model based on that input, and updating the View to reflect any
+changes in the data.
+
+In a SPA, the front-end tier communicates with the server via APIs to retrieve and update data. This
+allows the front-end to operate independently of the back-end, improving scalability and
+maintainability of the application.
+
+Such separation of concerns would allow for more modular and maintainable code and makes it easier to
+update the user interface without impacting the rest of the application.
+
+For this application the presentation layer carries one requirement that deserves particular
+attention. The Workbook is the main working module, and the Functional Requirements ask for a format
+similar to Excel, where cells can be viewed and edited, formulas inserted, and copy, paste and undo
+behave the way they do in a spreadsheet. Health Accounts analysts have worked this way for years, so
+we treat the familiarity of that surface as a requirement rather than a preference. We recommend a
+virtualized data grid such as **AG Grid Community** or **react-datasheet-grid**, both open source,
+which provide range selection, keyboard navigation, multi cell copy and paste and frozen rows and
+columns out of the box. Supporting libraries we recommend include **TanStack Table** for the list
+grids in Setup, Users and Reports, **TanStack Query** for retrieval, caching and refetching of server
+data, **dnd-kit** for the drag interactions in the report builder and the column reordering, and
+**Apache ECharts** or **Chart.js** for the dashboard and quality check visualizations. Accessibility
+is verified during development using **axe-core**.
+
+#### API - Application Programming Interface Layer/Tier
+
+The API acts as a standard channel for the application to interact with the Business Logic and Rules.
+API generally encompasses the Business Logic layer too, which is responsible for implementing the
+functionality required to support the business process.
+
+The API Layer provides a reusable set of services that can be consumed by the front-end application.
+If required, the APIs can be used to exchange data with other external systems in an
+industry standard manner. The API layer also provides help in decoupling the front-end and back-end
+layers of the application, allowing them to be developed and maintained independently. This means
+changes to one layer will not affect the other, allowing for more flexibility and scalability.
+
+In this solution the API layer carries the logic that makes the application a Health Accounts tool
+rather than a general data editor. It holds the calculation engine that parses and evaluates
+indicator formulas, the quality check engine, the rules that decide what a user may see and change,
+the orchestration of every exchange with xMart, and the management of background jobs. It also
+exposes the data retrieval API that xMart itself will call, described later in this section. Services
+are designed to be stateless so that the tier can be scaled out to absorb the year end load, with
+shared state held in the database or the cache rather than in server memory. API contracts are
+documented with **OpenAPI** through **Swagger**, so that WHO holds a precise and current description
+of every endpoint. For background job execution we recommend **Hangfire** or **Quartz**, which give
+persistent queues, automatic retry and a monitoring dashboard without additional infrastructure.
+Structured logging through **Serilog** and distributed tracing through **OpenTelemetry** make it
+possible to follow a single user action across the layers when a problem needs diagnosing.
+
+#### Data Access Layer
+
+The data layer refers to the part of the application that deals with storing, retrieving and
+manipulating data. It abstracts the underlying data storage mechanism and provides a consistent way
+for the rest of the application to interact with the data. With abstraction, it automatically
+provides portability, where it is easier to port the application to a different data storage
+mechanism.
+
+In the 3-tier architecture, the front-end tier is typically separate from the other two tiers
+(business logic and data) to allow for flexibility in design and implementation and to make it easier
+to update, maintain and modify components without impacting the other parts of the application. The
+front-end, API and data tiers can be scaled independently, making it easier to handle increased user
+traffic or changes in system requirements.
+
+For the DMS this layer reaches two stores and one cache through the same internal interface. The
+first is WHO xMart, accessed through its secured API, which holds the Health Accounts record. The
+second is the DMS local database, which holds the operational data described in the Solution
+Overview. The third is the cache. Because the business logic above this layer never knows which store
+it is reading from, the boundary between xMart and the local database can be adjusted during the
+design phase without reworking the application. Our recommended relational store is
+**PostgreSQL** or **Microsoft SQL Server**, both of which give the transactional integrity, indexing
+and retention behaviour that the audit log and the job queue require. Schema changes are managed as
+versioned migrations so that every environment can be rebuilt to a known state.
+
+#### Important Modules
+
+We have studied the Terms of Reference, the Functional Requirements, the API specification for data
+exchange with xMart and the clarifications issued, and we have gone through the use cases in detail
+to understand the working practices they describe. This section sets out the modules we propose to
+build, and what each of them does. The modules follow the structure of the requirements closely so
+that WHO can trace each part of the system back to the business need it answers, and so that the
+phased delivery can be agreed module by module.
+
+The proposal covers the complete functionality described in the requirements. Delivery is phased, as
+the requirements themselves direct: the first release is the Pilot, containing the functionality
+marked for Pilot priority, and the remaining functionality is added incrementally in the agreed
+priority order once the Pilot is approved. Where a capability described below belongs to a later
+phase, that is confirmed during the requirements finalization phase and reflected in the sprint plan.
+One capability we have chosen to bring forward is country level access restriction for regular users.
+It is not marked for the Pilot, but because access decisions are enforced centrally in the API layer
+rather than screen by screen, adding a country dimension to a check that is already being made costs
+very little now and would be an expensive change later. We therefore propose to include it in the
+Pilot at no additional cost.
+
+**Assumptions**
+
+The following assumptions underpin the proposed solution. Each will be confirmed during project
+initiation, and any change will be handled through the agreed change process.
+
+- WHO will provide access to the xMart platform, including API credentials and the relevant mart
+  structures, for the Development, UAT and Production environments.
+- WHO will provide and host the UAT and Production environments within WHO Azure. Argusoft will
+  provide and operate the Development environment.
+- WHO will carry out the Entra ID application registration and will provision guest accounts for
+  external users.
+- The final list of predefined quality check rules and of notification events will be provided by the
+  WHO technical unit at the beginning of the project, using the examples in the requirements as the
+  starting point.
+- WHO will provide access to the legacy DMS database, together with any available documentation, for
+  the migration of legacy data and formulas.
+- The recurring pipelines that bring country data into xMart from eDamis, HAPT, OneDrive and other
+  sources are already in place and remain outside the scope of DMS development.
+- The DMS user interface will be in English. Report output will be available with variable labels in
+  the six official WHO languages.
+- WHO will provide the security scan API used to check uploaded files.
+- The system will support approximately twenty concurrent internal users and data for approximately
+  196 countries, with data volumes for a single request ranging from a few dozen rows to the stated
+  maximum of twenty five million.
+- WHO will provide representative test data and will take part in User Acceptance Testing.
+
+Based on our understanding we propose the following modules.
+
+**Home Dashboard**
+
+- Reporting Round Overview
+- Publication Readiness
+- Quality Findings Summary
+- Data Completeness
+- Recent Activity and Notifications
+
+**Users and Role Management**
+
+- User Access and Sign In
+- Role Assignment
+- Role Permission Configuration
+- Country Level Access Restriction
+- User Status Management
+
+**Setup and Configuration**
+
+- Configuration Import from xMart
+- Countries and Groups of Countries
+- Currencies
+- Classifications and Categories
+- Crosses
+- Observation Metadata Fields
+- Formulas
+- Country Reporting Follow Up
+- Data Publishing Status
+- Component Export and Import
+
+**Workbook Management**
+
+- Workbook Selection and Filters
+- Data Viewing and Editing
+- Copy, Paste and Undo
+- Observation Metadata
+- Series Estimation Tools
+- Concurrency and Locking
+- Workbook Export
+
+**Formula Management and Calculation Engine**
+
+- Predefined Indicator Formulas
+- Custom and Country Specific Formulas
+- Dependency Resolution and Validation
+- Legacy Formula Access
+
+**Quality Checks**
+
+- Rule Library
+- Rule Builder
+- Threshold Configuration
+- Country Exclusions
+- Rule Execution
+- Quality Check Reports
+- Rule Export and Import
+
+**Reports and Analytics**
+
+- Report Builder
+- Predefined and Custom Reports
+- Data Tracking Reports
+- Multilanguage Report Output
+- Export and Background Generation
+- Report List and Favourites
+
+**Data and Metadata Versioning**
+
+- Version History
+- Version Comparison
+- Version and Dataset Restoration
+
+**Notifications**
+
+- Event Catalogue
+- Notification Configuration
+- Subscriptions and Preferences
+- In App Delivery
+
+**Integration with WHO xMart**
+
+- Data Retrieval from xMart
+- Data and Metadata Write Back
+- Data Retrieval API for xMart
+- Integration Monitoring and Error Handling
+
+**Legacy Data and Formula Migration**
+
+- Source Profiling and Mapping
+- Migration Execution
+- Reconciliation and Validation
+
+**Additional Features**
+
+- Multilanguage Report Labels
+- Accessibility
+- Browser Support and Responsive Layout
+- Audit Trail
+
+**Security Features**
+
+- Authentication and Single Sign On
+- Authorization and Data Scoping
+- Encryption in Transit and at Rest
+- File Upload Validation and Malware Scanning
+- Secure Coding Practices
+
+#### Home Dashboard
+
+The dashboard is the first screen a user sees after signing in, and we have designed it to answer the
+questions a Health Accounts analyst actually asks at the start of a working session rather than to
+present statistics for their own sake. Every element on it is a link into the record it describes, so
+the dashboard works as a queue of things to do rather than a summary to read and leave.
+
+The **Reporting Round** panel shows where the current cycle stands: which countries have submitted,
+which are still outstanding, and which are approaching or past their due date. It draws on the
+reporting schedule and focal point details held in the Setup module, and it is the panel the team will
+use most often between submissions. Beside it, **Publication Readiness** shows how many countries sit
+at **Not publish** and how many have moved to **Ready to publish**, which gives an immediate sense of
+how much of the round is finished. **Quality Findings** summarises the outcome of recent quality check
+runs by severity, with a link straight to the affected country and observation. **Data Completeness**
+presents coverage across countries and years as a heat map so that gaps stand out visually and can be
+turned into follow up. **Recent Activity** lists submissions received, changes made and the user's
+outstanding notifications.
+
+Content on the dashboard is filtered by the signed in user's role and country scope, so a Regional
+Office colleague sees their own countries and an administrator sees the whole picture. The
+requirements also describe separate dashboards for administrators and regular users as a later
+addition. Our proposal delivers a common dashboard first, filtered by permission, and then adds the
+role specific layouts in the agreed phase, with the administrator view gaining operational content
+such as integration health, background job status and recent configuration changes.
+
+> **[SCREENSHOT 1]**
+
+#### Users and Role Management
+
+This module gives administrators one place to control who can use the DMS and what they can do inside
+it. Sign in is handled entirely by WHO Single Sign On through Entra ID, so the application never
+stores or manages a password. Both WHO internal staff and external contributors are supported, the
+latter as guest accounts in Entra ID, and both follow the same sign in path and the same permission
+rules. On the client side we recommend **MSAL** for the authentication flow, with the server
+validating tokens through standard **OpenID Connect** middleware.
+
+An administrator grants access from the **Users** list by entering a colleague's WHO account or guest
+email address and choosing a role. The identity itself is established by Entra ID at first sign in,
+so the DMS record carries the authorization rather than the credential. The system provides the two
+roles the requirements define, Administrator and Regular user, and an administrator holds every
+capability a regular user holds in addition to the administrative ones, so there is no function that
+a regular user can reach and an administrator cannot.
+
+Permissions are configuration rather than code. On the **Role Permissions** screen an administrator
+sets, for each module, the level that applies to regular users, choosing from the levels the
+requirements define: no access, view, view and export, edit selected countries, edit all, and full
+administrative control. Only the levels that carry meaning for a given module are offered, so
+"edit selected countries" is available on the Workbook but not on Users. Regular users keep view and
+export rights on the modules they cannot edit, which means the configuration can never produce a user
+who is unable to see the data they are responsible for. A **Capability Preview** panel beside the
+matrix shows in plain language what a regular user will and will not be able to do once the change is
+saved, which removes most of the guesswork from permission changes. Changes take effect immediately
+and are written to the audit log.
+
+Access for a regular user can also be restricted to a defined list of countries, so that a Regional or
+Country Office colleague works only within their own countries. The restriction is applied in the API
+layer, which means it governs every module consistently, including the Workbook, reports, quality
+checks and every export, rather than being applied screen by screen where one path could be missed.
+
+Where someone leaves a post or changes responsibilities, their access is withdrawn using
+**Disable user** and can be restored later with **Enable user**, keeping all of their history and
+authorship intact. The system will not allow the last remaining enabled administrator to be disabled
+or moved to the Regular user role, so the platform cannot be left with nobody able to administer it.
+In line with the requirements, DMS users are never deleted. User records are referenced by observation
+authorship, version histories, rule and report ownership and audit entries, and removing a user would
+break the traceability those references provide. There is therefore no delete action anywhere in the
+module, and withdrawal of access is always achieved by disabling the account.
+
+> **[SCREENSHOT 2]**
+
+#### Setup and Configuration
+
+The Setup module is where the Health Accounts team defines the vocabulary the rest of the system uses.
+Each configurable component sits on its own tab within a consistent list and editor pattern, so the
+interaction a user learns on one component applies to all of them. Every tab is addressable by its own
+URL, which means a colleague can be sent straight to the right screen.
+
+Configuration begins by importing the reference data already held in the warehouse, so the DMS starts
+aligned with xMart rather than from an empty state. Later changes made in the DMS are written back to
+xMart. The module manages **Countries** and their attributes, **Currencies**, **Classifications and
+Categories**, **Crosses**, **Observation Metadata Fields** and **Formulas**, with values created,
+edited and, where the requirements allow, disabled and enabled through the interface.
+
+Several behaviours in this module are worth describing specifically. Columns in any component list can
+be reordered by dragging the column headers, and the chosen order is remembered for that user across
+sessions, which matters because different colleagues work with different attributes. Deleting a value
+is permitted only where that value has never been used in any record, as the requirements state, so
+before removing anything the system checks usage and, where the value is in use, reports where it is
+used instead of simply refusing. Administrators can define new attributes for existing components and
+edit component details, so the metadata model can be extended without a code change. Component values
+and their attributes can be exported to a spreadsheet and imported again, which makes bulk maintenance
+and offline review practical. For the spreadsheet handling in this module and elsewhere we recommend
+**ClosedXML** or **EPPlus** on the server and **SheetJS** in the browser, with **CsvHelper** for CSV
+work.
+
+Country attributes can be flagged as available for grouping and filtering, which is what turns an
+attribute such as WHO region, World Bank income group or OECD membership into a selectable
+**Group of countries**. Because groups are defined once here, they appear everywhere a country
+selection is offered, including quality check scope, report filters and workbook selection, and they
+stay correct as membership changes.
+
+The module also records the reporting schedule for each country, including due dates and focal point
+details, which is what drives the dashboard's reporting round view and the due date reminders
+described under Notifications. Each country and year carries a publishing status of **Not publish** or
+**Ready to publish**, which can be set on a single record or applied in bulk to a selection, so an
+entire round can be moved to publication readiness in one action.
+
+Crosses deserve a note because they are easy to model incorrectly. A cross is not a separate kind of
+record. It is an observation that carries values in more than one classification dimension at the same
+time, which is exactly how the long format observation table in xMart represents it. Modelling crosses
+this way keeps the Workbook, the Crosses tab and the warehouse structure consistent with one another.
+Predefined crosses are configured centrally, and users can define additional custom crosses for their
+own analysis. Metadata files already held in xMart are reachable from the DMS in the context of the
+observation or country they relate to, so supporting documentation does not require leaving the
+application.
+
+> **[SCREENSHOT 3]**
+
+#### Workbook Management
+
+The Workbook is the main working module of the DMS and the screen on which the Health Accounts team
+will spend most of its time. The requirements describe it clearly: a format similar to Excel, in which
+the values available for a country and year can be viewed and edited, formulas inserted, and copy,
+paste and undo used as they would be in a spreadsheet, with the metadata behind each observation
+reachable from the same place.
+
+A workbook is a two dimensional view of a three dimensional dataset, formed by fixing one axis and
+displaying the other two. A **Country Workbook** shows one country against many variables and many
+years. A **Variable Workbook** shows one variable across many countries and many years. A
+**Year Workbook** shows one year across many countries and many variables. The user chooses the type
+and the scope, and the selection is reflected in the address of the page so that a particular view can
+be bookmarked, returned to or shared with a colleague.
+
+Years run across the top and variables down the side, following the convention the team already uses,
+with a scale and currency selector above the grid so that figures can be read in the units the analyst
+is thinking in. Reported values and calculated indicators are visually distinct: as the requirements
+specify, formula cells are shown in a different colour and in italic, so a calculated figure is never
+mistaken for one a country reported. The year header row, the variable label column and the corner
+cell are all **frozen**, which means the context of a cell stays visible however far the user scrolls.
+Scrolling itself is continuous and virtualized rather than paged, because paging a data entry surface
+breaks range selection and makes copying a block of years across impossible.
+
+Editing happens in place and follows spreadsheet conventions, so typing replaces, Enter and Tab commit
+and move on, and Escape abandons the edit. Formulas can be typed directly into a cell and are
+evaluated straight away, with every dependent indicator recalculating as soon as an input changes, so
+the effect of a correction is visible immediately rather than after a refresh. Copying and pasting
+works within a workbook and across workbooks, and the paste action distinguishes between pasting
+**Values**, **Formulas** and **Metadata**, because in Health Accounts work those are three different
+intentions. A multi level **Undo** and **Redo** stack covers edits, pastes, fills and bulk operations,
+so a mistaken paste over a block of data is recoverable.
+
+Filtering is available on any displayed element. Rather than a permanent row of dropdown boxes, active
+filters appear as removable chips above the grid with an **Add filter** control beside them, so the
+current filter set can be read at a glance and any one filter reopened or removed in a single action.
+The filter state travels in the page address, which makes a filtered view shareable.
+
+Metadata is reached from the grid itself. Cells that carry metadata are marked, and opening one opens
+a panel **beside** the grid rather than over it. The grid stays loaded and the cell selection is
+preserved, so reading a comment or checking a source does not cost the analyst their place in the
+data. This is a deliberate departure from the legacy tool, where metadata lived on a separate sheet.
+Editing metadata is subject to the same permissions, versioning and write back as editing a value.
+Users can also choose which metadata fields are displayed and in what order, and that preference is
+remembered.
+
+The module provides the estimation tools the requirements ask for. **Fill gaps** completes missing
+points between two existing values in a series, and **Extrapolate** extends a series backwards or
+forwards, with the method chosen by the user. Observations produced this way are marked with the
+appropriate estimation method and data type so their origin stays visible in exports and reports
+afterwards. Alongside these, the workbook supports the calculation of standard indicators for all
+countries, simple statistical values such as average, minimum and maximum across a selected group of
+countries, and country specific formulas for estimation, which are saved for reuse.
+
+Because the requirements are explicit that only one user may edit the same observations at a time, the
+workbook applies a lock when editing begins. Other users keep read only access and are shown who holds
+the lock and since when, rather than simply being refused. Locks are released on save, or after a
+configurable interval once a session ends, and an administrator can release a lock that has been left
+open. Workbook data can be exported to Excel with values exported as values and formulas exported as
+formulas, so an exported workbook remains a working document. Quality check rules can also be run
+directly from the workbook against the data in view, with failing cells highlighted where they sit.
+
+> **[SCREENSHOT 4]**
+
+#### Formula Management and Calculation Engine
+
+The calculation engine is the technical heart of the DMS. The indicators it produces are published
+through the Global Health Expenditure Database and the Global Health Observatory, so correctness here
+is not a quality attribute of the component, it is the whole point of it. We treat the engine as a
+distinct piece of engineering rather than a feature of the Workbook, and we build it rather than adapt
+a spreadsheet engine, for four reasons that come directly from the requirements.
+
+First, Health Accounts formulas refer to variables, not to cells. An expression such as
+`CHE = HF.1 + HF.2 + HF.3 + HF.4 + HF.nec` names classification categories that are resolved for the
+current country and year. Second, formulas refer to other formulas. `CHE%GDP` depends on `CHE`, which
+in turn depends on the HF categories, so evaluation needs a dependency graph resolved in the right
+order with cycles detected, not text substitution. Third, every formula carries its own condition for
+handling missing values. The indicator table in the requirements attaches a condition to each one:
+some require all components to be present, others at least one. When a condition is not met the result
+must be blank and not zero, because a zero asserts that expenditure was nil while a blank says it is
+unknown, and that difference is visible in every published figure. Fourth, a predefined formula must be
+adjustable for one country without changing it for any other, so the engine resolves the applicable
+definition per country at the point of evaluation.
+
+The engine is built as a tokenizer, a parser producing a syntax tree, a dependency graph over the
+referenced variables, and an evaluator that walks that graph in dependency order. Cycles are caught
+when a formula is saved rather than when it is run, so an invalid formula cannot be committed in the
+first place. Variable codes in this domain contain full stops, percent signs, currency symbols and
+hyphens, as in `CHE%GDP_SHA2011` and `GGHE-D_pc_US$_SHA2011`, so references are resolved against the
+known set of variables rather than by guessing where a token ends, which is a common and quiet source
+of error. For the grammar we recommend **ANTLR** where a formally specified grammar is preferred, or a
+hand written recursive descent parser where a small and fully owned implementation is more
+appropriate. We would avoid general purpose expression libraries for the core engine, since none of
+them carry per country overrides or the null handling conditions this domain requires.
+
+Administrators manage the predefined indicators on the **Formulas** tab in Setup, each with its
+expression, its condition for missing values, its unit of measure and its folder grouping. A predefined
+formula can be edited, and a **Country Override** can be created that applies to one country alone.
+Regular users can write their own formulas and save them for reuse, and these pass through exactly the
+same parsing, validation and cycle checking.
+
+Because the engine holds an explicit dependency graph, the application can show a user why a figure is
+what it is. A **Formula Inspector** panel presents the expression, the inputs it resolved to, the
+condition that was applied, and the chain of other indicators that will change if an input changes.
+For a system whose outputs are published internationally, being able to explain a number is as
+important as calculating it.
+
+> **[SCREENSHOT 5]**
+
+#### Quality Checks
+
+The Quality Checks module is how the team satisfies itself that a dataset is fit to publish. It holds a
+library of rules, the means to run them over a chosen scope, and a report of what they found.
+
+Rules are grouped by type, with a separate group for a user's own customized rules. Rules created by
+the development team during implementation, rules created by administrators and rules created by
+individual users are visually distinct from one another, as the requirements ask, so the standing of a
+rule is clear from the list rather than having to be looked up.
+
+We will implement the predefined rule categories the requirements describe, with the final list
+confirmed by the technical unit at project start and the examples in the requirements as the starting
+point. These cover year on year growth in absolute and relative terms, growth between two versions of
+the data, observations that are new, that have disappeared or that are missing compared with previous
+reporting, inconsistency between categories where components should reconcile to their total,
+inconsistency between tables, atypical entries raised either as an error or as a warning, and outliers
+assessed across groups of countries.
+
+The thresholds that decide whether a rule passes, fails or raises a warning are set by administrators
+on a **Thresholds** screen rather than fixed in code, so the team can tune sensitivity as the data and
+their expectations change, without waiting for a release. Rules apply to every country by default, and
+an administrator can exclude specific countries where a rule is not meaningful for them, then
+**Reset exclusions** to make the rule universal again. Exclusions are shown on the rule itself, so an
+excluded country is never quietly left unchecked.
+
+A rule is run against a single country or against a group of countries chosen by attribute, using the
+same groups configured in Setup. The full year end run across all countries executes as a background
+job with visible progress, restart and retry, so a long run can be watched and recovered rather than
+simply waited on. Rules can also be triggered from a workbook against the data currently in view, with
+failing cells highlighted in place, which closes the gap between finding a problem and fixing it: the
+analyst does not have to carry a finding from a report back into the data by hand.
+
+Each run produces a report presenting findings by rule, by country and by severity, with charts
+alongside the tabular detail and a download in Excel or CSV. Every finding links directly to the
+observation that produced it. Rule configurations can be exported and imported, which supports review
+outside the system and moving a configuration between environments.
+
+> **[SCREENSHOT 6]**
+
+#### Reports and Analytics
+
+The Reports module produces the outputs the team needs for internal review, quality assurance and
+preparing the year's publication.
+
+Administrators define reports in an interactive builder. Available fields, including countries and
+their attributes, years, classifications and categories, variables and indicators, and metadata
+fields, are dragged into **Rows**, **Columns**, **Filters** and **Values** areas to form a
+multi dimensional view. The Values area takes the aggregations of the observation measure, and
+subtotals can be switched on at any grouping level. A live preview updates as the definition changes,
+so a report is designed against real output rather than against an abstract specification. Saved
+reports become available to everyone. In line with the requirements the builder is an administrator
+function: regular users open predefined reports, apply filters and export the results.
+
+A regular user can also create customized reports that are visible only to themselves, and any user
+can copy an existing report as the basis for a new one, which is usually the quickest route to a
+variant of an established output. Users arrange reports into their own list, mark **Favourites** and
+set the order, so a working set is always at hand.
+
+The module includes data tracking reports covering what has been received, what has changed and what
+is still outstanding across the reporting round, which supports the follow up process configured in
+Setup.
+
+Although the interface itself is in English, reports can be generated with variable labels in any of
+the six official WHO languages: English, French, Spanish, Arabic, Chinese and Russian. Column
+headings, classification and indicator labels, totals and unit strings all appear in the chosen
+language, on screen and in the exported file. Field values that are proper names, such as country and
+currency names, report titles and free text metadata, stay as recorded, which is the carve out the
+requirement itself makes. We use **i18next** for the language resources, kept outside the code so that
+a label correction or an additional language is a configuration change. One point we flag openly:
+Arabic introduces a right to left consideration for tabular output, and we address the layout of
+mirrored tables during design rather than discovering it at delivery.
+
+Reports export to Excel. Where the scope of a report makes generation slow, it runs as a background job
+so the user can carry on working, and an in app notification arrives on completion with a link to the
+file, or on failure with the reason. Job progress and history are visible in the module.
+
+Unit handling in this module is treated as a matter of correctness rather than formatting. Health
+Accounts values are expressed in national currency units, in US dollars or as percentages, so
+conversion is applied to each observation before aggregation, and the unit label carries the country's
+own currency rather than a generic one. Where the contributions to a total arrived in more than one
+currency, the report produces no figure at all, because adding pesos to yen is meaningless and an
+anonymous unit label would let exactly that mistake through looking perfectly correct.
+
+> **[SCREENSHOT 7]**
+
+#### Data and Metadata Versioning
+
+Versioning is built on the data versioning available in xMart, as the requirements direct, rather than
+on a parallel history kept in the DMS. Every committed change to an observation, a dataset or a
+metadata field produces a version carrying its author and the time it was made.
+
+Users with the appropriate rights can view up to ten previous versions of an observation or variable
+and compare them, with differences in value and in metadata shown side by side so that what changed,
+when and by whom is legible at a glance. From the same screen a previous version can be selected and
+restored as the current value. Administrators can additionally restore a full dataset as at a specific
+date, which is the recovery path when a bulk operation has produced an unintended result.
+
+Restoration is itself recorded as a version, so history is never rewritten. Restoring an earlier value
+adds a new entry describing that restoration rather than removing the entries in between, which keeps
+the record complete for audit purposes. Version comparison also feeds the quality check category
+concerned with growth between two versions of the data, so versioning serves validation as well as
+recovery.
+
+> **[SCREENSHOT 8]**
+
+#### Notifications
+
+The Notifications module provides the event driven, in application notifications the requirements
+describe.
+
+Notifications are raised on defined events: a country's submission arriving, a reporting due date
+approaching or passing, a background report or quality check finishing or failing, a dataset moving to
+**Ready to publish**, a version being restored, or a configuration or permission change being applied.
+A predefined set is delivered with the system, based on the list the technical unit provides at project
+start.
+
+Administrators create and edit notifications, setting the event that triggers each one and the
+countries or groups of countries it applies to for each user. Because the groups are the same ones
+configured in Setup, a subscription such as "all countries in the African Region" is expressed once
+and stays correct as the membership of that group changes. Users control what reaches them through
+**Notification Preferences**, choosing the countries and variables they care about, so that colleagues
+receive what is relevant to their responsibilities rather than every event in the system.
+
+Notifications are delivered in the application and highlighted on the dashboard, with an unread count
+in the header. Where a notification refers to something the user can open, such as a completed report
+or a quality check result, it carries a working link to it. The reporting due dates configured in Setup
+raise reminders as dates approach and pass, which is what turns the follow up configuration into an
+active process rather than a reference table someone has to remember to consult.
+
+> **[SCREENSHOT 9]**
+
+#### Integration with WHO xMart
+
+Integration with xMart is not a feature at the edge of this system. It is the mechanism by which the
+system holds its data, and the requirements define the exchange in both directions.
+
+> **[FIGURE 3]**
+
+Whenever the DMS needs to display or process Health Accounts information it retrieves that information
+from xMart through the secured xMart API. This covers observations for the Workbook, the configuration
+behind the Setup module, the data underlying reports and quality checks, and version information.
+Retrieval is designed to ask only for what the screen needs, filtered by country, year range and the
+variables in scope, so that opening a workbook fetches one bounded slice rather than a country's entire
+history. Where a request genuinely spans a large volume, such as a year end quality check or a
+multi country report, retrieval is paged and processed incrementally in the background. Throughout,
+the distinction the requirements draw is preserved: values arrive as values and formulas arrive as
+formulas, so a calculated cell reaches the DMS as an expression to evaluate rather than as a fixed
+number.
+
+Changes made in the DMS are returned to xMart so that the warehouse stays authoritative. This covers
+observation values and metadata edited in the Workbook, and changes made in Setup to countries,
+currencies, classifications, categories, crosses, metadata fields and formulas. Each write back carries
+the identity of the user who made the change, as the requirements specify, and again keeps values as
+values and formulas as formulas.
+
+The requirements leave the trigger for write back to be agreed at the start of the project, offering a
+save action or simply leaving a screen as the possibilities. Our recommendation is an explicit
+**Save**, with a clearly marked unsaved changes state on the screen. It gives the analyst a defined
+point at which work is committed, it makes a concurrent editing conflict detectable at a known moment,
+and it produces a version history whose entries correspond to deliberate decisions rather than to
+incidental navigation. We will confirm this with WHO during design. From the user's point of view a
+save either succeeds completely or reports a failure naming the observations affected, and a failed
+transmission is queued for retry with the outcome visible to the user and to administrators.
+
+Alongside consuming the xMart API, the DMS exposes a data retrieval API that xMart calls to extract DMS
+data. We will implement this to the specification in the API requirements: HTTP GET requests, CSV as
+the default output with JSON available as well, filtering on country code and on a single year or year
+range, the DMS internal identifier returned on every row, server side paging designed around the
+reference page size of one hundred thousand records, a UTC LastModified value that can be filtered by
+range and that reflects inserts, updates and deletes alike, retrieval of soft deleted records through
+an IsDeleted filter, the ability to return all data unfiltered, streamed responses for large
+extractions, OAuth 2.0 authentication and HTTPS only transport.
+
+Two of those items are treated as first class design requirements rather than reporting conveniences,
+because xMart cannot perform reliable incremental extraction without them. Every path in the
+application that modifies data updates the LastModified value, and deletion is implemented as a change
+of state rather than a physical removal, so a record that disappears from the DMS can still be
+identified as deleted by a caller that asks for it.
+
+For administrators the module also provides operational visibility. **Sync Status** shows, per source
+and per direction, when data was last retrieved, when changes were last written back, what is pending
+and what has failed. An **API Call Log** records requests to and from xMart with their outcome,
+duration and payload size, so an integration problem can be diagnosed from evidence rather than
+reconstructed. Failed exchanges are queued, retried according to policy and escalated by notification
+when retries are exhausted. Background jobs covering quality check runs, report generation and bulk
+exports are monitored from the same place.
+
+Finally, the requirements ask that functionality be implemented within the xMart platform itself
+wherever doing so saves effort and cost, and state that WHO will give credit to solutions that use
+xMart technology even partially. We have taken this into account in shaping the architecture. We
+propose to use xMart for the storage and data model of observations, metadata and configuration, rather
+than replicating that structure in the DMS; for native data versioning, on which the version history
+and restore functions are built; for format validation and transformation on ingestion, which the
+process map already places in xMart; for views and derived structures where a view is cheaper and
+faster than an equivalent query assembled in the application; for holding the legacy formulas imported
+from the old system as metadata; and for onboarding and updating model definitions through the xMart
+Model Uploader, a capability our team has already used in production on the WHO Emergency Public
+Dashboard. The interactive and rule driven functionality, meaning the Workbook, the calculation engine,
 the quality check engine, the report builder, user and permission management, notifications, job
-orchestration and the Annex 3 API — that is, the interactive and business-rule functionality for
-which xMart is not the appropriate execution environment.
-
-Argusoft's existing hands-on experience with the xMart OData API and the xMart Model Uploader, gained
-on the WHO Emergency Public Dashboard, means this assessment can be refined quickly and accurately
-during the discovery phase rather than being deferred until development is under way.
-
----
-
-## Proposed Modules
-
-The following sections describe each functional module of the proposed DMS: what it does, how users
-interact with it, and how it satisfies the corresponding use cases.
-
-### Application Home and Dashboard
-
-**Requirements addressed:** HLR2, HLR3 · UC001, UC002, UC003, UC003.1
-
-The DMS is delivered as a web-based application (UC001) accessible through a standard browser with no
-local installation, replacing the legacy system's requirement for simultaneous direct connections to
-a single server. Following authentication, the user arrives at the application home site, from which
-every module is reachable through a persistent navigation structure (UC002). Navigation is filtered
-by permission, so a user is never presented with an entry point to a module they cannot use.
-
-The home site presents a **dashboard** (UC003) that answers the questions a Health Accounts analyst
-asks at the start of a working session:
-
-- **Reporting round status** — which countries have reported for the current cycle, which are
-  outstanding, and which are approaching or past their due date, drawing on the country reporting
-  follow-up configuration of UC023.
-- **Publication readiness** — the distribution of countries across the publishing status flag defined
-  in UC024, so the team can see how much of the round is ready to publish.
-- **Quality findings** — the outcome of recent quality check runs, summarized by severity, with
-  navigation directly to the affected country and observation.
-- **Recent activity and notifications** — submissions received, changes made and the user's
-  outstanding notifications.
-- **Data completeness** — coverage across countries and years, highlighting gaps that require
-  follow-up.
-
-Each dashboard element links directly into the module and record it describes, so the dashboard
-functions as a working queue rather than as a static summary.
-
-UC003.1 requires distinct dashboards for administrators and regular users. In the Pilot the dashboard
-is common to both roles with content filtered by permission and country scope; the role-specific
-dashboard layouts are delivered in the subsequent phase according to their assigned priority, with
-administrator views adding system-wide operational content — integration health, job queue status,
-user activity and configuration changes.
-
-> **[SCREENSHOT 2 — Prototype: home dashboard]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### User and Role Management
-
-**Requirements addressed:** HLR4, HLR5, HLR6 · UC004–UC012
-
-The Users module (UC004) provides administrators with a single place to manage who may use the DMS
-and what they may do within it.
-
-**Authentication (UC006, HLR5).** Access is through WHO Single Sign-On using Entra ID. The DMS does
-not store or manage passwords. As required by HLR4, the system serves both WHO internal users and
-external users managed as guest accounts in Entra ID, with the same authentication path and the same
-permission model applied to both.
-
-**Granting access (UC005).** An administrator grants a user access by identifying them by their WHO
-account or guest email address and assigning a role. The user's identity is established by Entra ID
-at first sign-in; the DMS record holds the authorization, not the credential.
-
-**Roles (UC007, HLR6).** The system implements the two roles defined in the requirements —
-**Administrator** and **Regular user**. Administrators hold every capability available to a regular
-user in addition to their administrative rights, so there is no capability that a regular user has
-and an administrator does not. Roles are assigned and changed from the user list.
-
-**Configurable role permissions (UC008).** Rather than encoding capabilities in the application,
-permissions are configuration. For each module, an administrator sets the permission level that
-applies to regular users, chosen from the levels defined in the requirements — no access, view,
-view and export, edit selected countries, edit all, and full administrative control — offering only
-those levels that carry meaning for the module in question. Because regular users retain view and
-export rights on modules they cannot edit, the configuration cannot produce a user who is unable to
-see the data they are responsible for. Changes to the matrix take effect immediately and are audited.
-
-**Country restrictions (UC009).** A regular user's access can be restricted to specific countries, so
-that a regional office user works only within their own countries. The restriction is applied at the
-service boundary and therefore governs every module consistently — workbook, reports, quality checks
-and exports alike — rather than being enforced screen by screen.
-
-Although UC009 is not flagged for the Pilot, Argusoft proposes to **deliver it within the Pilot at no
-additional cost**. Because authorization is enforced centrally rather than screen by screen, adding a
-country dimension to an authorization decision that is already being made is a small increment of
-work — whereas retrofitting it later would mean revisiting every data access path in the system. It
-is therefore both cheaper and safer to build it in from the outset, and it gives regional and country
-office users a correctly scoped Pilot from the first release.
-
-**Disable and enable (UC010, UC011).** A user's access can be temporarily withdrawn and later
-restored, preserving all of their history and authorship. The system prevents the last enabled
-administrator from being disabled or demoted, so the platform cannot be left without administrative
-access.
-
-**Users are never deleted (UC012).** In accordance with UC012, DMS users cannot be hard-deleted. This
-is a structural property of the design rather than a hidden control: user records are referenced by
-observation authorship, version histories, quality check rule ownership, report ownership and audit
-entries, and deleting a user would break the traceability those references provide. Withdrawal of
-access is achieved by disabling the account.
+orchestration and the retrieval API, is implemented in the DMS, where that kind of logic belongs. Our
+existing familiarity with the xMart OData API and the Model Uploader means this assessment can be
+confirmed and refined quickly during discovery rather than being settled after development has started.
+
+> **[SCREENSHOT 10]**
+
+#### Legacy Data and Formula Migration
+
+The legacy DMS holds the Health Accounts history the new system needs to be able to consult, together
+with approximately seventy thousand formulas in its Microsoft SQL Server database. Argusoft will manage
+the migration of this content into the agreed xMart and DMS target structures as a controlled and
+reconciled process rather than a single transfer.
+
+We begin by profiling the legacy schema, its data quality and its formula syntax, and producing a
+source to target mapping agreed with WHO. Extraction takes the latest version of each record and each
+formula, in line with the requirement that only the latest version is migrated. Transformation maps
+legacy identifiers onto the classification and category codes in use in the new system. Loading places
+the data in xMart, with the legacy formulas stored as plain text metadata fields so that each is
+available for inquiry from the new DMS against the observations it relates to.
+
+The formulas are then translated into working formulas in the new DMS. The calculation engine described
+earlier is what makes this systematic rather than manual: because it parses an expression into a syntax
+tree instead of treating it as text, converting a legacy formula is a matter of re-expressing a parsed
+structure in the new syntax. The conversion is carried out together with the WHO Health Accounts team,
+whose knowledge of the legacy formula population is what allows individual cases to be settled
+authoritatively, and each converted formula is validated by comparing its computed result against the
+legacy result for the same country and year.
+
+Reconciliation produces record counts, control totals and an exception report naming any formula that
+needs individual attention and why, so that anything outstanding is a known and jointly managed list
+rather than a silent gap. The migration is run at least twice in a non production environment before
+the production run, so that the reconciliation report rather than the cutover is where problems come to
+light, and a documented rollback position is established before the production run begins. WHO signs
+off against the reconciliation evidence before cutover.
+
+#### Additional Features
+
+Report output is available with variable labels in the six official WHO languages, as described under
+Reports and Analytics. Language resources are held outside the application code using **i18next**, so
+adding a language or correcting a label does not require a code change. Labels are translated while
+codes, unit keys and stored filter values stay canonical, which matters because a translated unit key
+would stop the currency checks in the reporting engine comparing like with like.
+
+The application will be developed to meet the applicable WHO accessibility requirements, covering
+keyboard navigation, focus order, form labelling, colour contrast and compatibility with assistive
+technology. We treat this as a design constraint from the first wireframe rather than as remediation at
+the end, because the two components hardest to make accessible, the workbook grid and the report
+builder, cannot be retrofitted cheaply. Both are designed for full keyboard operation, and the workbook
+reinforces its use of colour with typography so that the distinction between reported and calculated
+cells does not depend on colour alone. Accessibility checks run automatically in the build using
+**axe-core**, alongside manual testing with a screen reader.
+
+The application supports the browsers and viewport sizes agreed with WHO, verified by cross browser
+testing with **Playwright**. Layouts are responsive across desktop and laptop sizes. The Workbook, being
+a dense data entry surface, is designed for desktop use, which reflects how the team actually works.
 
-> **[SCREENSHOT 3 — Prototype: user list with inline role and status controls, and the role
-> permission matrix]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
+Every data change, configuration change, permission change, quality check run, report generation and
+integration event is written to an audit trail carrying the user's identity, a timestamp and a
+description of the action. Administrators reach it through a searchable and filterable
+**Audit Log** view. Logs are structured using **Serilog** and can be shipped to a central platform
+such as the **ELK stack** or Azure Monitor for retention and analysis.
 
-### Setup and Configuration
+#### Security Features
 
-**Requirements addressed:** HLR7 · UC013–UC030
+Security is described in detail under *Approach* earlier in this proposal, and the points below cover
+how it appears in the design of the solution itself.
 
-The Setup module (UC013) is where the Health Accounts team defines the vocabulary of the system. It
-presents each configurable component on its own tab within a consistent list-and-editor pattern, so
-that the interaction learned on one component applies to all of them.
+Authentication is delegated entirely to WHO Entra ID, so the application holds no passwords and
+inherits WHO's own account policies, including multi factor authentication. Authorization is enforced
+in the API layer, covering role permissions and country restrictions together, which means it cannot be
+bypassed by manipulating the client. All traffic runs over HTTPS, and the data retrieval API that xMart
+calls is protected with OAuth 2.0.
 
-**Configuration components.** The module manages countries and their attributes, currencies,
-classifications and categories, crosses, observation metadata fields, and formulas. Values can be
-created, edited and — where the requirements permit — disabled and enabled, through a user-friendly
-interface rather than through database intervention.
-
-**Import from xMart (UC014).** Configuration data is imported from xMart, so that the DMS begins from
-the reference data already maintained in the warehouse and stays aligned with it. Subsequent changes
-made in the DMS are written back under UC046.
-
-**Column ordering (UC015).** Users can reorder the columns of any component list by dragging the
-column headers, and the chosen order persists for that user across sessions. This applies uniformly
-across every list in the module.
-
-**Editing lists of values and creating new values (UC016, UC017).** Predefined lists of values can be
-edited and new values created for a component, with the attribute definitions of that component
-determining the fields presented.
-
-**New attributes and component editing (UC018, UC019).** Administrators can define new attributes for
-existing components and edit component details, extending the metadata model without a code change.
-
-**Deleting a value (UC020).** In accordance with HLR7, a value may be deleted only if it has not been
-used in any record. The system verifies usage before permitting deletion and, where the value is in
-use, states where it is used rather than simply refusing.
-
-**Export and import of component values (UC021).** Component values and their attributes can be
-exported to a structured file and re-imported, supporting bulk maintenance and offline review.
-
-**Groups of countries (UC022).** Country attributes can be flagged as available for grouping and
-filtering, so that a group such as a WHO region or an income classification can be selected wherever
-the system offers a country selection — quality check scope, report filters and workbook selection
-alike. Groups are therefore defined once and consumed everywhere.
-
-**Country reporting follow-up (UC023).** The module records the expected reporting schedule for each
-country, including due dates and focal point information, which drives the dashboard's reporting
-round view and the due-date notifications described in §5.9.
-
-**Data publishing status flag (UC024).** Each country and year carries a publishing status —
-*Not publish* or *Ready to publish* — which can be set individually or applied in bulk to a selection,
-so that a full reporting round can be moved to publication readiness in a single operation.
-
-**Predefined and custom crosses (UC025, UC026).** Crosses between classifications are configured as
-multi-dimension combinations. A cross is not a separate entity in the data model: it is an
-observation that carries values in more than one classification dimension simultaneously, which is
-exactly how the xMart long-format structure represents it. Predefined crosses are configured
-centrally; users can define additional custom crosses.
-
-**Observation metadata fields (UC027).** The metadata fields carried by each observation — sources,
-comments, web links, estimation method and data type among them — are defined here, so that the
-metadata model can evolve without a release.
-
-**Metadata files stored in xMart (UC028).** Metadata files held in xMart are accessible from the DMS
-in the context of the observation or country to which they relate, so that supporting documentation
-is reachable without leaving the application.
-
-**Predefined and custom formulas (UC029, UC030).** Formula management is presented in §5.5.
-
-> **[SCREENSHOT 4 — Prototype: Setup module showing the component tabs and a component list with
-> reorderable columns]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Workbook Management
-
-**Requirements addressed:** HLR8, HLR9 · UC031, UC031.1, UC032, UC033, UC034
-
-The Workbook is the principal working surface of the DMS and the module in which Health Accounts
-analysts will spend most of their time. HLR8 and UC031 define it clearly: a spreadsheet-like
-environment in which values for a country and year can be viewed and edited, formulas inserted and
-evaluated, metadata consulted, and Excel-like copy, paste and undo performed.
-
-**Workbook definition.** A workbook is a two-dimensional view of a three-dimensional dataset, formed
-by fixing one axis and displaying the other two:
-
-- **Country workbook** — one country, many variables, many years.
-- **Variable workbook** — one variable, many countries, many years.
-- **Year workbook** — one year, many countries, many variables.
-
-The user selects the workbook type and its scope; the selection is reflected in the address of the
-page, so a particular working view can be bookmarked, returned to, or shared with a colleague.
-
-**Grid behaviour.** The grid presents years across the top and variables down the side, following the
-convention the Health Accounts team already uses, with a scale and currency selector governing how
-values are displayed. Reported values and calculated indicators are visually distinguished. In
-accordance with UC031, formula cells are rendered in a different colour and in italic so that a
-calculated cell is never mistaken for a reported one.
-
-The header row, the variable label column and the corner are **frozen**, so the year and variable
-context remains visible at any scroll position — addressing a specific and well-known limitation of
-the legacy tool. Scrolling is continuous and virtualized rather than paged, because paging a data
-entry surface breaks range selection and range copy and paste.
-
-**Editing and calculation.** Values are edited in place. Formulas can be entered directly into cells
-and are evaluated immediately, with dependent indicators recalculating as soon as an input changes,
-so the analyst sees the consequence of an edit without an explicit refresh. Editing behaviour follows
-spreadsheet conventions: type to replace, Enter and Tab to commit and advance, Escape to abandon.
-
-**Copy, paste and undo.** The requirement in HLR8 is for copy, paste and undo functionality similar to
-Excel, and the module implements it accordingly. Ranges can be copied and pasted **within a workbook
-and across workbooks**, and the paste operation distinguishes between pasting **values**, **formulas**
-and **metadata**, because the three are meaningfully different operations in Health Accounts work.
-A multi-level undo and redo stack covers edits, pastes, fills and bulk operations.
-
-**Filtering.** The workbook can be filtered by any displayed element. Filters are presented as
-removable chips above the grid rather than as a permanent row of dropdowns, so the active filter set
-is visible at a glance and a filter can be removed or reopened in one action. The filter state is
-carried in the page address, which makes a filtered view shareable.
-
-**Metadata (UC031, UC034).** Every observation carries metadata, and the workbook marks cells that
-have it. Opening a cell's metadata opens a panel **beside** the grid rather than over it: the grid
-remains mounted, the cell selection is preserved, and the analyst does not lose their place in the
-data while reading or editing a comment or source. Editing metadata is subject to the same
-permissions, versioning and write-back as editing a value. Under UC034, users can customize which
-metadata fields are displayed and in what order, and the preference persists.
-
-**Series operations.** As required by HLR8, the workbook supports **filling gaps between existing
-data points** and **extrapolating a series backwards and forwards**, with the interpolation or
-extrapolation method selected by the user and the resulting observations marked with the appropriate
-estimation method and data type so their provenance remains visible.
-
-**Statistical and country-specific calculation.** The workbook supports the calculation of standard
-indicators applicable to all countries, simple statistical values such as average, minimum and maximum
-across a selected group of countries, and country-customized formulas for statistical estimation which
-are saved for later reuse. Legacy formulas imported under UC060 are viewable in the metadata of the
-observations to which they relate.
-
-**Concurrency and locking (HLR9, UC033).** Only one user may edit the same observations at any one
-time. When a user begins editing, the affected scope is locked for other users, who retain read-only
-access and are shown who holds the lock and since when. Locks are released on save or on
-disconnection after a configurable interval, and administrators can release a lock that has been left
-open. This directly addresses the concurrency limitation of the legacy system while ensuring that a
-second user is never simply locked out without explanation.
-
-**Export (UC032).** Workbook data is exported to Excel with values exported as values and formulas
-exported as formulas, so that an exported workbook remains a working document rather than a flat
-snapshot.
-
-**Ordering (UC031.1).** Under UC031.1, workbook data can be ordered by any displayed element. The
-default order follows the classification hierarchy, which is what makes the parent and child
-relationships legible; user-selected ordering is delivered according to its assigned priority.
-
-**Quality checks from the workbook (UC052).** Quality check rules can be run directly from the
-workbook against the data in view, with failing cells highlighted in place. This is described in
-§5.7.
-
-> **[SCREENSHOT 5 — Prototype: workbook with frozen headers, filter chips, calculated cells shown in
-> italic, and the metadata panel open beside the grid]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Formula Management and Calculation Engine
-
-**Requirements addressed:** HLR8 · UC029, UC030, UC060
-
-The calculation engine is the technical core of the DMS. The Health Accounts indicators it produces
-are published through GHED and the GHO, so correctness is not a quality attribute of this component —
-it is the component's entire purpose. Argusoft treats it as a distinct piece of engineering rather
-than as a feature of the workbook.
-
-**Why a purpose-built engine.** Health Accounts formulas are not spreadsheet formulas, and the
-difference is structural in four ways:
-
-1. **They reference variables, not cells.** `CHE = HF.1 + HF.2 + HF.3 + HF.4 + HF.nec` refers to
-   classification categories, resolved for the current country and year, not to grid coordinates.
-2. **They reference other formulas.** `CHE%GDP_SHA2011` depends on `CHE`, which itself depends on the
-   `HF` categories. Evaluation therefore requires a dependency graph resolved in topological order,
-   with cycle detection — not textual substitution.
-3. **Each carries an explicit null-handling condition.** The indicator table in HLR8 attaches a
-   condition to every formula: some require *all* components to be non-null, others *at least one*. A
-   formula whose condition is not met must yield **blank, not zero** — a distinction that is visible
-   in every published output and that matters analytically, because a zero asserts that expenditure
-   was nil while a blank states that it is unknown.
-4. **They must be overridable per country.** UC029 requires that a predefined formula can be
-   customized for a specific country without altering it for any other, so the engine resolves the
-   applicable definition per country at evaluation time.
-
-**Engine design.** The engine is built as a tokenizer, a parser producing an abstract syntax tree, a
-dependency graph over the referenced variables, and an evaluator that walks the graph in dependency
-order. Cycles are detected and reported at the point the formula is saved rather than at the point it
-is evaluated, so an invalid formula cannot be committed. Variable codes containing periods,
-percentage signs, currency symbols and hyphens — `CHE%GDP_SHA2011`, `GGHE-D_pc_US$_SHA2011` — are
-resolved against the known variable set rather than by inferring token boundaries from characters,
-which is a common and silent source of error in naive implementations.
-
-**Predefined formulas (UC029).** The predefined indicators listed in HLR8 are configured in the Setup
-module with their expression, their null-handling condition, their unit of measure and their folder
-grouping. Administrators can edit a predefined formula, and can create a country-specific override
-that applies to one country only.
-
-**Custom formulas (UC030).** Users can create their own formulas and save them for reuse, subject to
-the same parsing, validation and cycle checking as predefined formulas.
-
-**Transparency.** Because the engine holds an explicit dependency graph, the system can show a user
-*why* a value is what it is: the expression, the resolved inputs, the condition that was applied, and
-the chain of dependent formulas that will change if an input changes. For a system whose outputs are
-published internationally, this auditability is a functional requirement in substance even where it
-is not stated as one.
-
-**Legacy formulas.** The engine's design is also what makes the legacy formula migration described in
-§6 tractable, since converting an old-DMS expression into a new-DMS formula is fundamentally a
-parsing and re-expression problem.
-
-> **[SCREENSHOT 6 — Prototype: formula editor showing the parsed expression, its dependency graph and
-> a live evaluation]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Reports and Analytics
-
-**Requirements addressed:** HLR10, HLR21 · UC035–UC042
-
-The Reports module (UC035) provides the Health Accounts team with the analytical outputs required for
-internal review, quality assurance and publication preparation.
-
-**Report builder (UC036, HLR10).** Administrators define reports through an interactive builder in
-which the available fields — countries and their attributes, years, classifications and categories,
-variables and indicators, metadata fields — are placed into row, column, filter and value areas to
-form a multi-dimensional view. Values are aggregations of the observation measure, and subtotals can
-be enabled on any grouping level. A live preview updates as the definition changes, so the report is
-designed against real output rather than against an abstract specification. Saved reports become
-available to all users.
-
-In accordance with HLR10, the builder is available to administrators. **Regular users access
-predefined reports, apply filters and export the results** — they do not define new shared reports.
-
-**Custom and copied reports (UC037, UC038).** A regular user can create customized reports visible to
-themselves only, and any user can copy an existing report as the starting point for a new one, which
-is the fastest route to a variant of an established output.
-
-**Report list and favourites (UC040).** Users can arrange reports into their own list, mark
-favourites and order them, so that a working set of reports is immediately at hand.
-
-**Data tracking reports (UC039).** The module includes data tracking reports covering what has been
-received, what has changed, and what remains outstanding across the reporting round, supporting the
-follow-up process configured under UC023.
-
-**Multilanguage reports (UC041, HLR21).** Although the DMS interface is in English, reports can be
-generated with variable labels in any of the six official WHO languages — English, French, Spanish,
-Arabic, Chinese and Russian. Column headings, classification and indicator labels, totals and unit
-strings are rendered in the selected language in both the on-screen and exported output. Field values
-that are proper names — country names, currency names, report titles and free-text metadata — remain
-as recorded, in line with the requirement's own scope. Argusoft notes that Arabic introduces a
-right-to-left layout consideration for the tabular output, and this is addressed explicitly in design
-rather than discovered at delivery.
-
-**Export to Excel (UC042).** Reports are exported to Excel. Reports whose scope makes generation
-long-running are executed as **background jobs**: the user continues working, and an in-app
-notification is raised on completion carrying a link to the generated file, or on failure carrying
-the reason. Job progress and history are visible in the module.
-
-**Units, currency and scale.** Because Health Accounts values are expressed in national currency
-units, in US dollars or as percentages, unit handling is treated as a correctness concern rather than
-a formatting one. Conversion is applied per observation before aggregation, and the unit label
-carries the country's currency rather than a generic label. A total whose contributions arrived in
-more than one currency produces **no number**, because summing amounts in different currencies is
-meaningless — a guard that a generic unit label would allow to pass silently.
-
-> **[SCREENSHOT 7 — Prototype: report builder with the field areas and live preview, and a generated
-> report]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Quality Checks
-
-**Requirements addressed:** HLR15 · UC047–UC055
-
-The Quality Checks module (UC047) is how the Health Accounts team establishes that a dataset is fit to
-publish. It provides a library of rules, the means to run them across a chosen scope, and a report of
-the findings.
-
-**Rule library.** Rules are presented grouped by type, with a distinct group for user-customized
-rules. Rules created by the development team during implementation, rules created by administrators
-and rules created by individual users are **visually distinguishable from one another**, as UC053
-requires, so the provenance and authority of a rule is apparent from the list.
-
-**Predefined rules (UC053).** Argusoft will implement the predefined rule categories described in the
-requirements, with the final list confirmed by the technical unit at project start and Annex 4 of the
-Functional Requirements as the starting point:
-
-- Year-on-year growth, in absolute and in relative terms.
-- Growth between two versions of the data.
-- New, disappeared or missing observations compared with previous reporting.
-- Inconsistency between categories — for example, components that should reconcile to their total.
-- Inconsistency between tables.
-- Atypical entries, raised as an error or as a warning according to configuration.
-- Outliers assessed across groups of countries.
-
-**Configuration values (UC054).** The thresholds that determine whether a rule passes, fails or raises
-a warning are **administrator-configurable**, not fixed in code, so that the team can tune sensitivity
-as data and expectations change without a release.
-
-**Custom rules (UC050).** A regular user can create a quality check rule available to themselves only,
-building it by selecting variables, countries and years and defining calculations and conditions.
-Administrators can see users' custom rules, so that a rule which proves broadly useful can be promoted
-to a predefined rule.
-
-**Administrator-defined predefined rules (UC049).** Administrators create rules available to all users
-through the same rule-building interface.
-
-**Country exclusions (UC048).** Rules apply to all countries by default. An administrator can exclude
-one or more countries from a rule where the rule is not meaningful for them, and can reset the
-exclusions so the rule applies universally again. Exclusions are visible on the rule, so an excluded
-country is never silently unchecked.
-
-**Running rules.** Rules are run against a single country or against a group of countries selected by
-their attributes — region, income group, OECD membership and any other attribute flagged as groupable
-under UC022. Year-end processing, when the full quality check process runs across all countries, is
-executed as a background job with progress reporting, restart and retry, so that a long run is
-observable and recoverable rather than opaque.
-
-**Running from the workbook (UC052).** Rules can be triggered manually from a workbook against the
-data currently in view, with failing cells **highlighted in place in the grid**. This closes the loop
-between finding a problem and correcting it: the analyst does not have to carry a finding from a
-report back into the data by hand.
-
-**Reports (UC055).** Each run produces a quality check report presenting the findings by rule, by
-country and by severity, with visualization of the results and the ability to download the report.
-Findings link directly to the affected observation.
-
-**Export and import of rule configuration (UC051).** Rule configurations can be exported and
-re-imported, supporting review outside the system and the transfer of a configuration between
-environments.
-
-> **[SCREENSHOT 8 — Prototype: quality check rule list with origin-distinguished rules, and a
-> findings report]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Data and Metadata Versioning
-
-**Requirements addressed:** HLR12 · UC043, UC044
-
-Versioning in the DMS is built on the data versioning available in xMart, as HLR12 directs, rather
-than on a parallel audit structure in the DMS. Every committed change to an observation, a dataset or
-a metadata field produces a version stamped with its author and the time of the change.
-
-**Viewing and comparing versions (UC043, UC044).** Users with the corresponding rights can view up to
-ten previous versions of an observation or variable and compare them, with differences in value and in
-metadata presented side by side so that what changed, when and by whom is immediately legible.
-
-**Restoration (UC044).** A user can select one of the previous versions and restore it as the current
-value. Administrators can additionally restore a **full dataset as at a specific date**, which is the
-recovery path for a bulk operation that produced an unintended result. Restoration is itself a
-versioned change, so the history is never rewritten — restoring an earlier value adds a new version
-recording that restoration rather than deleting the intervening ones.
-
-**Comparison against a previous reporting round** feeds the quality check category concerned with
-growth between two versions of the data, so versioning is not only a recovery mechanism but an input
-to validation.
-
-> **[SCREENSHOT 9 — Prototype: version comparison for an observation]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Notifications
-
-**Requirements addressed:** HLR18 · UC023, UC042, UC058, UC059
-
-The Notifications module (UC058) provides the in-app, event-driven notifications required by HLR18.
-
-**Event catalogue.** Notifications are raised on defined system events — a country's data submission
-received, a reporting due date approaching or passed, a background report or quality check job
-completed or failed, a dataset moved to *Ready to publish*, a version restored, a configuration or
-permission change applied. A predefined set is delivered with the system based on the list provided by
-the technical unit at project start.
-
-**Configuration (UC059).** Administrators can create and edit notifications, defining the triggering
-event and the countries or groups of countries to which each user's notification applies. Because
-country groups are the same groups configured under UC022, a subscription such as "all countries in
-the African Region" is expressed once and remains correct as the group's membership changes.
-
-**Preferences.** In accordance with HLR18, notifications are focused on user preferences such as
-country or variable, so that a user receives what is relevant to their responsibilities rather than
-every event in the system.
-
-**Delivery.** Notifications are delivered in-app and highlighted on the dashboard, as UC059 describes.
-Notifications carrying an artefact — a completed report, a quality check report — carry a working link
-to it.
-
-**Reporting follow-up (UC023).** The country reporting due dates configured in the Setup module raise
-notifications as dates approach and pass, which is what turns the reporting follow-up configuration
-into an active process rather than a static reference table.
-
-> **[SCREENSHOT 10 — Prototype: notification inbox and subscription configuration]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
-### Administration and Integration Monitoring
-
-**Requirements addressed:** HLR13, HLR14, HLR17 · UC045, UC046, UC056, UC057
-
-Alongside the functional modules, the DMS provides administrators with visibility into the health of
-the system and its integration with xMart — the operational counterpart to the integration design
-described in §4.
-
-- **Synchronization status** per data source and per exchange direction: when data was last retrieved
-  from xMart, when changes were last written back, what is pending and what has failed.
-- **An API call log** recording requests to and from xMart with their outcome, duration and payload
-  size, so that an integration problem can be diagnosed from evidence.
-- **Error handling and retry**, with failed exchanges queued, retried according to policy, and
-  escalated through notification when they exhaust retries.
-- **Background job monitoring** covering quality check runs, report generation and bulk exports, with
-  progress, restart and retry.
-- **The Annex 3 data retrieval interface**, through which the DMS-side API described in §4.3 can be
-  exercised and verified.
-- **Audit log access**, presenting the record of data changes, configuration changes, permission
-  changes and integration events in a searchable, filterable view.
-
-> **[SCREENSHOT 11 — Prototype: integration monitoring with the API call log and synchronization
-> status]**
->
-> *Indicative prototype view illustrating the proposed design based on Argusoft's current understanding. Not a final design — subject to revision following requirements finalization with WHO stakeholders.*
-
----
-
-## Legacy Data and Formula Migration
-
-**Requirements addressed:** HLR19 · UC060, UC060.1
-
-The legacy DMS holds the Health Accounts history that the new system must be able to consult, and
-approximately 70,000 formulas held in its Microsoft SQL Server database. Argusoft will perform the
-one-time migration of this content into the agreed xMart and DMS target structures.
-
-**Approach.** Migration is executed as a controlled, repeatable and reconciled process rather than as
-a single transfer:
-
-1. **Discovery and profiling** of the legacy schema, its data quality and its formula syntax,
-   producing a documented source-to-target mapping agreed with WHO.
-2. **Extraction** of the latest version of each record and each formula, in line with the requirement
-   that only the latest version is migrated.
-3. **Transformation** into the target structure, including the mapping of legacy identifiers onto the
-   classification and category codes in use in the new system.
-4. **Loading** into xMart, with the legacy formulas stored as plain-text metadata fields so that they
-   are available for inquiry from the new DMS against the observations to which they relate.
-5. **Formula conversion**, translating legacy expressions into executable new-DMS formulas, as
-   described below.
-6. **Reconciliation and exception reporting**, producing record counts, control totals and a
-   **failed-conversion exception report** naming each formula requiring individual attention and why,
-   so that any remainder is a known and jointly managed list rather than a silent gap.
-7. **WHO validation and sign-off** against the reconciliation evidence, followed by cutover.
-
-**Trial runs.** The migration is executed at least twice in a non-production environment before the
-production run, so that the reconciliation report — not the production cutover — is where problems are
-found.
-
-**Rehearsed rollback.** A documented rollback position is established before the production run.
-
-### Formula migration and conversion
-
-Argusoft will manage the migration of the legacy formulas from the old DMS into the new system.
-All formulas are imported into xMart as plain-text metadata fields, so that each is available for
-inquiry from the new DMS against the observations to which it relates, and they are then translated
-into working formulas in the new DMS. The calculation engine described in §5.5 — which parses
-expressions into an abstract syntax tree rather than treating them as text — is what makes this
-translation systematic rather than manual, since converting a legacy expression is fundamentally a
-matter of re-expressing a parsed structure in the new syntax.
-
-The conversion is carried out in collaboration with the WHO Health Accounts team, whose domain
-knowledge of the legacy formula population is what allows individual cases to be resolved
-authoritatively, and it is validated by comparing each converted formula's computed result against
-the legacy result for the same country and year.
-
----
-
-## Non-Functional Design
-
-### Performance and Scalability
-
-UC057 and HLR17 describe volumes fluctuating from around twenty rows to a maximum of twenty-five
-million, with each of approximately 196 countries submitting up to ten times a year, countries able to
-resubmit their full time series since 2000, and a full quality check process across all countries at
-year end.
-
-The architecture answers this in four ways:
-
-- **The large volumes are retrieval volumes, not display volumes.** A workbook is a bounded slice of
-  data — one country against its variables and years — irrespective of how much data exists behind it.
-  The design does not assume that a large result set is ever loaded into a browser.
-- **Server-side paging and streaming.** Large extractions are paged, using the Annex 3 reference page
-  size of 100,000 records, or streamed, so that memory consumption is bounded regardless of result
-  size.
-- **Background and asynchronous processing.** Year-end quality checks, complex report generation and
-  bulk exports execute as background jobs with progress visibility, restart and retry, so that a large
-  workload is observable and recoverable and does not occupy an interactive session.
-- **Caching of reference data.** Configuration and reference data that changes rarely is cached, so
-  routine interaction does not generate repeated calls to xMart.
-
-The concurrent user population is modest — of the order of twenty internal users — so the design
-priority is throughput on batch operations and responsiveness on interactive ones, rather than mass
-concurrency. Representative performance scenarios and measurable thresholds will be agreed with WHO
-during discovery and verified as described in the Quality Assurance section of this proposal.
-
-### Security and Access Control
-
-Security is described in full under *Approach — Security & Coding Standards* earlier in this proposal
-and is not repeated here. In terms of the solution design specifically:
-
-- Authentication is delegated entirely to WHO Entra ID; the DMS stores no credentials.
-- Authorization is enforced at the service boundary, covering role permissions and country
-  restrictions, so that it cannot be circumvented by the client.
-- All transport is over HTTPS, and the Annex 3 API uses OAuth 2.0.
-- Data is encrypted in transit and at rest using WHO-approved Azure services and configurations.
-- Every data modification, configuration change, permission change and integration event is recorded
-  in the audit log with user identity and timestamp.
-- File uploads are validated and scanned using the WHO-provided security scan API.
-
-### Accessibility
-
-The application will be developed to meet the applicable WHO accessibility requirements, addressing
-keyboard navigation, focus order, form labelling, colour contrast and assistive technology
-compatibility. Accessibility is treated as a design constraint from the first wireframe rather than as
-a remediation activity, because the two components most difficult to make accessible — the workbook
-grid and the report builder — cannot be retrofitted cheaply. Both are designed with full keyboard
-operability, and the workbook's use of colour to distinguish calculated from reported cells is
-reinforced by typography rather than carried by colour alone.
-
-### Multilanguage Reporting
-
-In accordance with HLR21, the DMS interface is delivered in English, while reports can be generated
-with variable labels in any of the six official WHO languages. Language resources are externalized
-rather than embedded, so that a label correction or an additional language is a configuration change.
-Labels are translated while codes, unit keys and stored filter values remain canonical, so that
-translation cannot alter the behaviour of a calculation or a validation.
-
-### Browser Support, Responsiveness and Availability
-
-The application will support the browsers and viewport sizes agreed with WHO, verified through the
-cross-browser and responsive testing described in the Quality Assurance section. The interface is
-responsive across desktop and laptop viewport sizes; the workbook, being a dense data entry surface, is
-designed for desktop use, which reflects how the Health Accounts team works.
-
-Availability, backup and recovery objectives will be agreed with WHO during design and verified before
-production readiness.
-
----
-
-## Proposed Technology Stack
-
-Argusoft takes a technology-agnostic approach to platform selection. Each technology has its own
-strengths, and our objective is to select tools that best fit the solution's objectives, WHO's
-existing enterprise environment, the capabilities of the xMart platform, and long-term
-maintainability by WHO's own teams. The final stack will be confirmed with WHO during the solution
-design phase and documented in the System Design Document, taking into account WHO's preferred
-technologies, existing support arrangements and hosting environment.
-
-The following stack is proposed as the recommended baseline:
-
-| Layer | Proposed options | Rationale |
-|---|---|---|
-| **Front end** | React / Angular with TypeScript | Component-driven frameworks suited to a data-dense administrative application. TypeScript is recommended given the multi-dimensional data model and the formula abstract syntax tree, where static typing materially reduces defect rates. |
-| **Data grid** | A virtualized, spreadsheet-capable grid component | The workbook requires range selection, keyboard navigation, multi-cell copy and paste and frozen panes. Selection will avoid restrictive licensing. |
-| **Back end / API** | .NET (C#) / Java / Node.js | All support secure REST APIs, background processing and enterprise-grade integration. .NET aligns with WHO's existing Microsoft platform estate and with Argusoft's WHO delivery experience on ENAPHS, JEE Reporting and EWARS. |
-| **DMS local database** | Microsoft SQL Server / PostgreSQL | Relational storage for operational data, with the maturity required for transactional integrity, indexing and audit retention. SQL Server aligns with the WHO Azure environment. |
-| **Caching** | Redis / in-memory distributed cache | Caching of xMart reference data and session-scoped working state. |
-| **Background processing** | A durable job framework with a persistent queue | Year-end quality checks, report generation and migration processing require restart, retry and progress reporting. |
-| **Reporting and export** | Server-side spreadsheet generation libraries | Excel export with values as values and formulas as formulas, as UC032 and UC042 require. |
-| **Visualization** | Established charting libraries | Dashboard and quality check visualizations. |
-| **Data warehouse** | **WHO xMart** | Unchanged: the authoritative Health Accounts store, accessed through its secured API. |
-| **Integration** | xMart API (OData), REST, OAuth 2.0, HTTPS, CSV/JSON | As specified in HLR14 and RFP Annex 3. |
-| **Authentication** | WHO Entra ID (SSO, including guest accounts) | As specified in HLR4 and HLR5. |
-| **Cloud platform** | Microsoft Azure (WHO-provided) | As specified in the Terms of Reference. |
-| **DevOps** | Azure DevOps pipelines, Infrastructure as Code (Terraform / ARM / Bicep) | Required by Objective 3 of the Terms of Reference. |
-
-Three selection principles apply throughout. **First, alignment with WHO's environment takes
-precedence over Argusoft's preference** — a stack WHO's own teams can maintain after handover is
-worth more than a marginally superior one they cannot. **Second, licensing is a selection criterion**:
-components carrying commercial or restrictive licences are avoided where an equivalent
-permissively-licensed option exists, so that WHO's ownership of the delivered source code is
-unencumbered. **Third, the xMart platform is used wherever it can do the work**, in accordance with
-HLR16 and UC056 and as set out in §4.4.
-
----
-
-## Hosting and Deployment
-
-**Environments.** In accordance with the Terms of Reference and as set out in the Work Plan, Argusoft
-will establish and operate the **Development environment** using vendor-provided infrastructure, while
-**WHO will provide and host the UAT and Production environments within WHO Azure**. Sprint
-deliverables are deployed to UAT for WHO verification, and approved releases are promoted to
-Production.
-
-**Hardware and resource sizing.** As required by the Terms of Reference deliverables, Argusoft will
-prepare a **Hardware Requirement Proposal** during the design phase, specifying the Azure resources
-required for UAT and Production — compute, database, storage, caching, networking and monitoring
-components — sized against the expected volumes, the year-end processing peak and the agreed
-availability objectives.
-
-**Infrastructure as Code and DevOps.** Cloud resources are added, removed and configured through
-**Infrastructure as Code and DevOps pipelines**, as Objective 3 of the Terms of Reference requires,
-so that environments are reproducible and every configuration change is version-controlled and
+Data is encrypted in transit and at rest using WHO approved Azure services and configurations, with
+keys held in **Azure Key Vault** and separated from the application. Uploaded files are validated for
+type and size and scanned for malware using the security scan API WHO provides, and a file that fails
+either check is rejected before it reaches storage.
+
+The application is built following OWASP secure coding practices, with input validation, output
+encoding, parameterised queries and secure session handling applied throughout, and least privilege
+applied to every service account. Our development process includes static application security testing,
+software composition analysis and dependency scanning, secret scanning, and dynamic application
+security testing before release. Open source tooling we use for this includes **OWASP ZAP** for dynamic
+scanning, **OWASP Dependency-Check** or **Trivy** for dependency and container analysis, and
+**Gitleaks** for secret detection, alongside the commercial tooling in our standard pipeline.
+
+### Proposed Technology Stack
+
+At Argusoft we take a technology agnostic approach when selecting tools and platforms. Each technology
+has its own strengths, and our aim is to choose the ones that best fit the objectives of the solution,
+WHO's existing enterprise environment, the capabilities of the xMart platform, and the ability of WHO's
+own teams to maintain the system after handover. The final stack will be confirmed with WHO during the
+solution design phase and recorded in the System Design Document.
+
+Below is the recommended technology stack for this project.
+
+**Frontend Framework**
+
+React with TypeScript, or Angular. A component driven framework suited to a data dense administrative
+application. TypeScript is recommended because the multi dimensional data model and the formula syntax
+tree benefit considerably from static typing, which catches a class of error that would otherwise
+surface as a wrong number.
+
+**Data Grid and UI Libraries**
+
+AG Grid Community or react-datasheet-grid for the Workbook, providing range selection, keyboard
+navigation, copy and paste and frozen panes. TanStack Table for list grids, TanStack Query for server
+state, dnd-kit for drag interactions, and Apache ECharts or Chart.js for visualization. All are open
+source with permissive licensing.
+
+**Backend Technologies**
+
+.NET (C#), Java or Node.js. All three support secure REST APIs, robust background processing and
+enterprise integration. .NET aligns with WHO's existing Microsoft platform estate and with our own
+delivery experience on WHO applications including ENAPHS, JEE Reporting and EWARS, and is our
+recommendation on that basis. Final selection will depend on the hosting environment and WHO's
+preference for long term maintenance.
+
+**Database Engine**
+
+Microsoft SQL Server or PostgreSQL for the DMS local database. Both are mature relational engines with
+the indexing, transactional integrity and retention behaviour required for operational data, the audit
+log and the job queue. SQL Server aligns naturally with the WHO Azure environment.
+
+**Data Warehouse**
+
+WHO xMart, unchanged, as the authoritative store for Health Accounts data, accessed through its
+secured API.
+
+**Caching and Background Processing**
+
+Redis for distributed caching of reference data. Hangfire or Quartz for durable background jobs, giving
+persistent queues, retry and progress monitoring for year end quality checks, report generation and
+migration processing.
+
+**Reporting and Export**
+
+ClosedXML or EPPlus for server side Excel generation, SheetJS for browser side export, and CsvHelper
+for CSV handling. These support the requirement that values are exported as values and formulas as
+formulas.
+
+**Integration and Security**
+
+xMart API over OData, REST with OpenAPI documentation through Swagger, OAuth 2.0 and HTTPS, WHO Entra ID
+for single sign on including guest accounts, and Azure Key Vault for secret management. Serilog and
+OpenTelemetry for logging and tracing.
+
+**Localization and Accessibility**
+
+i18next for report label resources in the six official WHO languages, and axe-core for automated
+accessibility verification.
+
+**Testing**
+
+xUnit, JUnit or Jest for unit testing, Playwright for end to end and cross browser testing, and k6 for
+performance testing.
+
+**Platform**
+
+Microsoft Azure, provided by WHO, on Linux or Windows hosting as agreed, with Azure DevOps pipelines and
+Infrastructure as Code through Terraform or Bicep.
+
+Three principles guide these choices. Alignment with WHO's environment takes precedence over our own
+preference, because a stack WHO's teams can maintain after handover is worth more than a marginally
+superior one they cannot. Licensing is a selection criterion, so components carrying commercial or
+restrictive licences are avoided where a permissively licensed equivalent exists, keeping WHO's
+ownership of the delivered source code unencumbered. And the xMart platform is used wherever it can do
+the work, in line with the requirement to develop within xMart where that saves effort and cost.
+
+### Hosting
+
+Argusoft will establish and operate the **Development** environment using vendor provided
+infrastructure. WHO will provide and host the **UAT** and **Production** environments within WHO Azure.
+Sprint deliverables are deployed to UAT for verification by WHO experts, and approved releases are then
+promoted to Production, with any defect found during a sprint fixed within that sprint or the next.
+
+As required by the Terms of Reference, we will prepare a **Hardware Requirement Proposal** during the
+design phase specifying the Azure resources needed for UAT and Production, covering compute, database,
+storage, caching, networking and monitoring components, sized against the expected data volumes, the
+year end processing peak and the agreed availability objectives.
+
+Cloud resources are added, removed and configured through Infrastructure as Code and DevOps pipelines,
+so that environments are reproducible and every configuration change is version controlled and
 auditable. Deployment is automated through pipelines covering build, automated testing, security
 scanning and release, with a documented rollback position for every release.
 
-**Monitoring and support.** Argusoft will provide **24×7 automated monitoring** of server performance
-and system accessibility, environment alerting, and **SSL certificate expiry monitoring with timely
-renewal** to eliminate the risk of downtime from certificate expiry. Troubleshooting and configuration
-adjustment will be performed as needed, and Argusoft will engage Microsoft on WHO's behalf for any
-Azure subscription or infrastructure issue, obtaining resolution and root cause analysis. **Support
-and Maintenance reports are submitted monthly**, recording changes and troubleshooting performed on the
-UAT and Production environments.
+We will provide 24x7 automated monitoring of server performance and system accessibility, together with
+environment alerting and SSL certificate expiry monitoring with timely renewal, so that a lapsed
+certificate never becomes a cause of downtime. Troubleshooting and configuration adjustments are carried
+out as needed, and we will contact Microsoft on WHO's behalf for any Azure subscription or
+infrastructure issue and obtain resolution and root cause analysis. Support and Maintenance reports are
+submitted monthly, recording the changes and troubleshooting performed on the UAT and Production
+environments.
 
-**Backup and recovery.** Backup and restoration procedures are established against recovery objectives
-agreed with WHO and tested before production readiness.
+Backup and restoration procedures are established against recovery objectives agreed with WHO and
+tested before production readiness.
 
-**Handover.** On completion, Argusoft hands over the complete source code, the database technical
-description including relational schema, data types and table structures, the system architecture
-documentation, the deployment and infrastructure definitions, user and administrator guides, and any
-applicable third-party licence keys — so that WHO holds full ownership and the practical ability to
-maintain and further develop the system.
+On completion we hand over the complete source code, the database technical description including
+relational schema, data types and table structures, the system architecture documentation, the
+deployment and infrastructure definitions, the user and administrator guides, and any applicable third
+party licence keys, so that WHO holds full ownership and the practical ability to maintain and extend
+the system.
 
 ---
 
 ## Notes for review — not part of the proposal text
 
-**Delete this whole section before insertion into the .docx.** It is a working record, not proposal
-content.
+**Delete this section before inserting into the .docx.**
 
-### Resolved — 11 August 2026
+### What changed in this revision
 
-1. **Legacy migration scope.** Confirmed in scope: WHO clarification puts the migration inside the
-   current engagement. §6 states plainly that Argusoft manages the migration — import into xMart as
-   plain-text metadata, then translation into working DMS formulas — carried out in collaboration with
-   the HA team and validated against legacy results. **No effort caveat**, per your correction of
-   11 August: UC060 already places the HA team on the conversion where it proves significant
-   (*"if this means a significant additional effort, HA team will do the conversion… based on some
-   conversion scripts once the tool is implemented"*), so hedging on our side is unnecessary and reads
-   as weakness. The earlier draft's profiling milestone and phased-fallback language has been removed.
-2. **Sprint length.** Left as is — you are raising the 2–4 vs 2–3 week inconsistency separately. This
-   section does not reference sprint length, so nothing here depends on the outcome.
-3. **UC009 country restrictions.** Confirmed for the Pilot. §5.2 now states that Argusoft delivers it
-   within the Pilot at no additional cost, with the reasoning: authorization is already enforced
-   centrally, so adding a country dimension is a small increment now and an expensive retrofit later.
-   This is the one place in the section where we claim to exceed the required Pilot scope.
-4. **Development Timeline.** Left empty, out of scope for this pass.
-5. **Prototype framing.** Strengthened as directed. The *Working prototype* subsection now states in
-   bold that the prototype reflects Argusoft's current understanding only, that the screens are not
-   the final design, and that it will be updated during requirements finalization based on stakeholder
-   input and WHO approval. Every one of the eleven screenshot figures additionally carries the caption:
-   *"Indicative prototype view illustrating the proposed design based on Argusoft's current
-   understanding. Not a final design — subject to revision following requirements finalization with
-   WHO stakeholders."*
+- **Structure now follows the reference proposal.** *Proposed Solution* → *Solution Overview* →
+  *Front-end*, *API*, *Data Access Layer*, *Important Modules*, then one subsection per module, then
+  *Proposed Technology Stack* and *Hosting*.
+- **The three layer sections reuse the reference proposal's wording**, adjusted for this project. The
+  reference text had "three distinct components - the data (model)"; the dash became a colon.
+- **All use case and requirement numbers removed** from the prose. Requirements are now referred to in
+  words, which also reads more naturally.
+- **No dashes used anywhere in the text.** House style follows the reference proposal, which writes
+  "role based", "web based", "single page" without hyphens. Hyphens remain only where the reference
+  itself keeps them (n-tier, Front-end, Model-View-Controller, Object-Relational Mapping) and in
+  product names.
+- **Named open source libraries throughout**, matching how the reference proposal names ClosedXML,
+  Chart.js and i18next inside its module descriptions. The stack section stays technology agnostic and
+  offers options, as the reference does.
+- **UI elements and feature names in bold**: **Add filter**, **Ready to publish**, **Fill gaps**,
+  **Extrapolate**, **Save**, **Undo**, **Country Override**, **Formula Inspector**, **Sync Status**,
+  **API Call Log**, **Audit Log**, and others.
+- **Assumptions added** under *Important Modules*, as requested.
+
+### Decisions taken
+
+- **Working Prototype paragraph added** at the end of *Solution Overview*, before the Functional
+  Landscape figure. It names the hosted URL and states plainly that the prototype reflects our current
+  understanding, is not the delivered product, and will be updated during requirements finalization
+  based on stakeholder input and WHO approval.
+- **Figures keep their use case and requirement labels for now.** Note that this leaves the figures
+  carrying references the prose no longer uses. Regenerating them without those labels is a small
+  change whenever you want it.
+- **Proposed Technology Stack and Hosting stay as Heading 3** under *Proposed Solution*, rather than
+  being promoted to Heading 2 as in the reference proposal.
+- **Ten screenshots**, one per module that has a screen in the prototype. The Annex 3 retrieval API
+  view is covered inside the Integration screenshot.
 
 ### Still open
 
-6. **Figures and screenshots are placeholders** pending Steps 3 and 4 — 3 diagrams, 11 screenshots.
+1. **Screenshots are not yet captured.** Each callout needs the standing caption agreed earlier:
+   *"Indicative prototype view illustrating the proposed design based on Argusoft's current
+   understanding. Not a final design, subject to revision following requirements finalization with WHO
+   stakeholders."*
+2. **Development Timeline** remains empty, as agreed.
