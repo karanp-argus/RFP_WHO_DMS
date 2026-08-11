@@ -186,10 +186,10 @@ first is WHO xMart, accessed through its secured API, which holds the Health Acc
 second is the DMS local database, which holds the operational data described in the Solution
 Overview. The third is the cache. Because the business logic above this layer never knows which store
 it is reading from, the boundary between xMart and the local database can be adjusted during the
-design phase without reworking the application. Our recommended relational store is
-**PostgreSQL** or **Microsoft SQL Server**, both of which give the transactional integrity, indexing
-and retention behaviour that the audit log and the job queue require. Schema changes are managed as
-versioned migrations so that every environment can be rebuilt to a known state.
+design phase without reworking the application. The relational store can be
+**Microsoft SQL Server**, **MySQL** or **PostgreSQL**, each of which gives the transactional integrity,
+indexing and retention behaviour that the audit log and the job queue require. Schema changes are
+managed as versioned migrations so that every environment can be rebuilt to a known state.
 
 #### Important Modules
 
@@ -934,17 +934,20 @@ source with permissive licensing.
 
 **Backend Technologies**
 
-.NET (C#), Java or Node.js. All three support secure REST APIs, robust background processing and
-enterprise integration. .NET aligns with WHO's existing Microsoft platform estate and with our own
-delivery experience on WHO applications including ENAPHS, JEE Reporting and EWARS, and is our
-recommendation on that basis. Final selection will depend on the hosting environment and WHO's
-preference for long term maintenance.
+.NET (C#), Python, Java or Node.js. All four support secure REST APIs, robust background processing
+and enterprise integration, and all four have mature libraries for the work this system does, including
+spreadsheet generation, scheduled jobs and OData consumption. .NET aligns with WHO's existing Microsoft
+platform estate and with our own delivery experience on WHO applications including ENAPHS, JEE Reporting
+and EWARS, so it is the option we would put forward first. Final selection will depend on the hosting
+environment and WHO's preference for long term maintenance, and we are equally comfortable delivering
+in any of the four.
 
 **Database Engine**
 
-Microsoft SQL Server or PostgreSQL for the DMS local database. Both are mature relational engines with
-the indexing, transactional integrity and retention behaviour required for operational data, the audit
-log and the job queue. SQL Server aligns naturally with the WHO Azure environment.
+Microsoft SQL Server, MySQL or PostgreSQL for the DMS local database. All three are mature relational
+engines with the indexing, transactional integrity and retention behaviour required for operational
+data, the audit log and the job queue. SQL Server aligns naturally with the WHO Azure environment and
+with the Microsoft platform experience WHO already holds in house, which is why we list it first.
 
 **Data Warehouse**
 

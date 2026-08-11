@@ -1,0 +1,332 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* App Architecture, styled after Reference/App Architecture - 27 AKF Whatsapp Chatbot.png.
+   Palette and proportions follow that reference rather than the WHO tokens used by
+   figures 1 to 3, because this is a house diagram type and consistency with the earlier
+   proposal matters more here.
+
+   WIDTH IS THE CONSTRAINT, NOT THE LAYOUT. The landscape arrangement of the reference is
+   kept. What changed is that every column was tightened so the whole canvas fits 1500px
+   instead of 1900px: the users block, the security strip, the tier descriptions, the
+   connector and the external column are all narrower, and the arrows are correspondingly
+   shorter. That matters because the figure is placed 6.5in wide in the proposal, so canvas
+   width divides directly into printed type size. Do not widen the canvas to make room for
+   new content; shorten the content instead.
+
+   A portrait revision was tried and rejected: turning the two horizontal exchange arrows
+   into vertical ones through a horizontal strip read badly.
+
+   Brand logos are deliberately NOT drawn. Hand-traced trademarks read as wrong, so the
+   technology names are set as text. */
+
+@font-face { font-family: 'Roboto'; font-weight: 400; src: url('fonts/Roboto-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Roboto'; font-weight: 500; src: url('fonts/RobotoMedium-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Roboto'; font-weight: 700; src: url('fonts/Roboto-bold.ttf') format('truetype'); }
+
+:root{
+  --ink:#243746;
+  --body:#3d4b57;
+  --dash:#3b8ee0;
+  --stage:#f6faff;
+  --band:#edf4fd;
+  --banddash:#8ab8ea;
+  --blue:#3ba0d8;   --bluebody:#eaf5fb;
+  --grey:#a9a9a9;   --greybody:#f7f7f7;
+  --teal:#7fd3c7;   --tealbody:#e8f8f5;
+  --green:#eaf7ea;  --greendash:#8cc98c;
+  --circle:#d9f0f3; --circledash:#5bb8c4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Roboto',Arial,sans-serif;color:var(--body);background:#fff;
+  width:1500px;padding:22px 24px 26px;-webkit-font-smoothing:antialiased;
+}
+h1{font-size:32px;font-weight:700;color:var(--ink);text-align:center;margin-bottom:18px}
+
+.stage{display:flex;align-items:stretch}
+
+/* ---- left: users ---- */
+.user{
+  flex:0 0 150px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding-right:12px;
+}
+.user .disc{
+  width:108px;height:108px;border-radius:50%;
+  background:var(--circle);border:2.5px dashed var(--circledash);
+  display:flex;align-items:center;justify-content:center;margin-bottom:11px;
+}
+.user b{display:block;font-size:21px;font-weight:500;color:var(--ink);line-height:1.28}
+.user span{display:block;font-size:17px;color:#66727f;margin-top:5px;line-height:1.32}
+
+/* ---- app container ---- */
+.appbox{
+  flex:1 1 auto;min-width:0;
+  border:2.5px dashed var(--dash);border-radius:6px;background:var(--stage);
+  padding:12px;display:flex;gap:10px;align-items:stretch;
+}
+.vstrip{
+  flex:0 0 46px;border:2px dashed var(--greendash);border-radius:5px;background:var(--green);
+  display:flex;align-items:center;justify-content:center;
+}
+.vstrip span{
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:19px;font-weight:500;color:#4a6b4a;letter-spacing:1.3px;white-space:nowrap;
+}
+.layers{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:11px}
+
+.band{
+  border:2px dashed var(--banddash);border-radius:6px;background:var(--band);
+  padding:12px;display:flex;gap:12px;align-items:stretch;
+}
+.tier{flex:0 0 42%;display:flex;gap:11px;align-items:flex-start;padding:3px 0 0 4px}
+.tier .glyph{flex:0 0 50px;padding-top:3px}
+.tier h2{font-size:28px;font-weight:400;color:var(--ink);line-height:1.12;margin-bottom:5px}
+.tier p{font-size:20px;line-height:1.36;color:var(--body)}
+.tier p b{font-weight:500;color:var(--ink)}
+
+.panel{flex:1 1 auto;min-width:0;border-radius:5px;overflow:hidden;display:flex;flex-direction:column}
+.panel .hd{padding:8px 13px;font-size:21px;font-weight:700;color:#fff}
+.panel .bd{flex:1;padding:10px 14px 12px}
+.panel.blue .hd{background:var(--blue)}   .panel.blue .bd{background:var(--bluebody)}
+.panel.grey .hd{background:var(--grey);color:#3a3a3a} .panel.grey .bd{background:var(--greybody)}
+.panel.teal .hd{background:var(--teal);color:#1f4f48} .panel.teal .bd{background:var(--tealbody)}
+.panel ul{list-style:none}
+.panel li{font-size:20px;line-height:1.4;padding-left:14px;position:relative;color:var(--body)}
+.panel li::before{
+  content:'';position:absolute;left:2px;top:10px;
+  width:5px;height:5px;border-radius:50%;background:#7d8b97;
+}
+.panel li b{font-weight:500;color:var(--ink)}
+
+/* ---- connector: authentication with the two directions passing through it ---- */
+.conn{flex:0 0 104px;display:flex;align-items:center;justify-content:center}
+.authwrap{
+  position:relative;width:104px;height:300px;
+  display:flex;align-items:center;justify-content:center;
+}
+.authwrap .astrip{
+  border:2px dashed var(--greendash);border-radius:5px;background:var(--green);
+  width:46px;height:400px;display:flex;align-items:center;justify-content:center;
+  position:relative;z-index:2;
+}
+.authwrap .astrip span{
+  writing-mode:vertical-rl;transform:rotate(180deg);
+  font-size:18px;font-weight:500;color:#4a6b4a;letter-spacing:1px;white-space:nowrap;
+}
+.authwrap .arrows{position:absolute;left:0;top:0;width:104px;height:300px;z-index:1}
+
+/* ---- right: external ---- */
+.external{
+  flex:0 0 342px;padding-left:4px;display:flex;flex-direction:column;justify-content:center;
+}
+.external h3{font-size:26px;font-weight:400;color:var(--ink);text-align:center;margin-bottom:11px}
+.extbox{
+  border:2.5px dashed var(--dash);border-radius:6px;background:var(--stage);
+  padding:11px;margin-bottom:26px;
+}
+.extbox .inner{border-radius:5px;overflow:hidden;background:#fff}
+.extbox .hd{background:var(--grey);color:#3a3a3a;padding:8px 13px;font-size:21px;font-weight:700}
+.extbox .bd{background:#fbfbfb;padding:11px 13px 13px}
+.extbox .lead{font-size:21px;font-weight:500;color:var(--ink);line-height:1.3}
+.extbox .sub{font-size:17px;color:#66727f;line-height:1.34;margin:3px 0 9px}
+.extbox ul{list-style:none}
+.extbox li{font-size:19px;line-height:1.45;padding-left:14px;position:relative}
+.extbox li::before{
+  content:'';position:absolute;left:2px;top:10px;
+  width:5px;height:5px;border-radius:50%;background:#7d8b97;
+}
+.store{text-align:center}
+.store .cap{font-size:18px;line-height:1.34;color:var(--body);margin-top:8px}
+.store .cap b{font-weight:500;color:var(--ink);display:block;font-size:19px;margin-bottom:2px}
+</style></head>
+<body>
+
+<h1>App Architecture</h1>
+
+<div class="stage">
+
+  <!-- ============ users ============ -->
+  <div class="user">
+    <div class="disc">
+      <svg width="54" height="54" viewBox="0 0 24 24" fill="#2f8fb5">
+        <circle cx="9" cy="8" r="3.3"/>
+        <path d="M9 12.6c-3.2 0-5.8 1.9-5.8 4.2v1.4h11.6v-1.4c0-2.3-2.6-4.2-5.8-4.2z"/>
+        <circle cx="16.6" cy="9.2" r="2.5" opacity=".75"/>
+        <path d="M16.6 13c-1.1 0-2.1.2-2.9.6 1.2.9 2 2.2 2 3.6v1h5.1v-1.2c0-2.2-1.9-4-4.2-4z" opacity=".75"/>
+      </svg>
+    </div>
+    <b>WHO Health<br>Accounts Team</b>
+    <span>HQ, Regional and<br>Country Offices,<br>external guests</span>
+  </div>
+
+  <!-- ============ application ============ -->
+  <div class="appbox">
+
+    <div class="vstrip"><span>Security / Proxy / Firewall</span></div>
+
+    <div class="layers">
+
+      <!-- presentation -->
+      <div class="band">
+        <div class="tier">
+          <div class="glyph">
+            <svg width="48" height="48" viewBox="0 0 64 64" fill="none" stroke="#2f6fae" stroke-width="3">
+              <circle cx="32" cy="32" r="7" fill="#4d95d6" stroke="none"/>
+              <rect x="4" y="4" width="15" height="15" rx="2.5" fill="#cfe4f7"/>
+              <rect x="45" y="4" width="15" height="15" rx="2.5" fill="#cfe4f7"/>
+              <rect x="4" y="45" width="15" height="15" rx="2.5" fill="#cfe4f7"/>
+              <rect x="45" y="45" width="15" height="15" rx="2.5" fill="#cfe4f7"/>
+              <path d="M19 11.5h26M19 52.5h26M11.5 19v26M52.5 19v26" stroke-width="2.4"/>
+              <path d="M26 26 19 19M38 26l7-7M26 38l-7 7M38 38l7 7" stroke-width="2.4"/>
+            </svg>
+          </div>
+          <div>
+            <h2>Presentation</h2>
+            <p>What users view and<br>interact with<br>
+              (<b>HTML5, CSS3, JavaScript,<br>TypeScript, React JS /<br>Angular / Vue JS</b>)</p>
+          </div>
+        </div>
+        <div class="panel blue">
+          <div class="hd">Front-End</div>
+          <div class="bd">
+            <ul>
+              <li><b>Single page web application</b>, responsive on desktop and laptop</li>
+              <li><b>Workbook grid</b> with frozen panes, range copy and paste, undo</li>
+              <li><b>Report builder</b>, dashboards and configuration screens</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- business -->
+      <div class="band">
+        <div class="tier">
+          <div class="glyph">
+            <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+              <path d="M14 42h30a11 11 0 0 0 1-21.9A15 15 0 0 0 16.2 23A10 10 0 0 0 14 42z"
+                    fill="#eef4fa" stroke="#9fb4c6" stroke-width="2.8"/>
+              <text x="32" y="37" font-family="Roboto,Arial" font-size="14" font-weight="700"
+                    fill="#7d8b97" text-anchor="middle">API</text>
+              <path d="M20 50h20" stroke="#9fb4c6" stroke-width="2.8" stroke-linecap="round"/>
+              <path d="M24 46l-4 4 4 4" stroke="#9fb4c6" stroke-width="2.8"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h2>Business</h2>
+            <p>Contains app logic<br>
+              (<b>.NET / Python / Java /<br>Node.js</b>, REST Web API)</p>
+          </div>
+        </div>
+        <div class="panel grey">
+          <div class="hd">API Layer</div>
+          <div class="bd">
+            <ul>
+              <li>Home Dashboard</li>
+              <li>Users and Role Management</li>
+              <li>Setup and Configuration</li>
+              <li>Workbook Management</li>
+              <li>Formula Management and Calculation Engine</li>
+              <li>Quality Checks</li>
+              <li>Reports and Analytics</li>
+              <li>Data and Metadata Versioning</li>
+              <li>Notifications</li>
+              <li>xMart Integration and Data Retrieval API</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- data -->
+      <div class="band">
+        <div class="tier">
+          <div class="glyph">
+            <svg width="48" height="48" viewBox="0 0 64 64">
+              <ellipse cx="32" cy="14" rx="21" ry="7.5" fill="#8fa8d6"/>
+              <path d="M11 14v11c0 4.1 9.4 7.5 21 7.5s21-3.4 21-7.5V14c0 4.1-9.4 7.5-21 7.5S11 18.1 11 14z" fill="#6f8bc4"/>
+              <path d="M11 27v11c0 4.1 9.4 7.5 21 7.5s21-3.4 21-7.5V27c0 4.1-9.4 7.5-21 7.5S11 31.1 11 27z" fill="#4a6291"/>
+              <path d="M11 40v10c0 4.1 9.4 7.5 21 7.5s21-3.4 21-7.5V40c0 4.1-9.4 7.5-21 7.5S11 44.1 11 40z" fill="#2f3e57"/>
+            </svg>
+          </div>
+          <div>
+            <h2>Data</h2>
+            <p>DMS operational data<br>storage
+              (<b>MS SQL Server /<br>MySQL / PostgreSQL</b>,<br>Redis cache)</p>
+          </div>
+        </div>
+        <div class="panel teal">
+          <div class="hd">Data Layer</div>
+          <div class="bd">
+            <ul>
+              <li>Database Service, Tables and Views</li>
+              <li>Stored Procedures and Functions</li>
+              <li>Users, roles and permissions</li>
+              <li>Rule and report definitions, job queue</li>
+              <li>Edit locks, notifications, audit log</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ connector ============ -->
+  <div class="conn">
+   <div class="authwrap">
+    <svg class="arrows" viewBox="0 0 104 300">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0 0 L10 5 L0 10 z" fill="#1f1f1f"/>
+        </marker>
+      </defs>
+      <!-- retrieval: xMart to DMS -->
+      <line x1="2" y1="108" x2="26" y2="108" stroke="#1f1f1f" stroke-width="2.6" marker-end="url(#ar)"/>
+      <line x1="78" y1="108" x2="102" y2="108" stroke="#1f1f1f" stroke-width="2.6" marker-end="url(#ar)"/>
+      <!-- write back: DMS to xMart -->
+      <line x1="102" y1="192" x2="78" y2="192" stroke="#1f1f1f" stroke-width="2.6" marker-end="url(#ar)"/>
+      <line x1="26" y1="192" x2="2" y2="192" stroke="#1f1f1f" stroke-width="2.6" marker-end="url(#ar)"/>
+    </svg>
+    <div class="astrip"><span>Authentication · WHO Entra ID SSO</span></div>
+   </div>
+  </div>
+
+  <!-- ============ external ============ -->
+  <div class="external">
+    <h3>External Data Sources</h3>
+    <div class="extbox">
+      <div class="inner">
+        <div class="hd">External Systems</div>
+        <div class="bd">
+          <div class="lead">WHO xMart</div>
+          <div class="sub">Health Accounts data warehouse, reached through its secured OData API</div>
+          <ul>
+            <li>eDamis</li>
+            <li>HAPT</li>
+            <li>OneDrive / internal folder</li>
+            <li>World Bank, IMF, UN sources</li>
+            <li>Old DMS (one time migration)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="store">
+      <svg width="104" height="104" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="13" rx="22" ry="8" fill="#8fa8d6"/>
+        <path d="M10 13v12c0 4.4 9.9 8 22 8s22-3.6 22-8V13c0 4.4-9.9 8-22 8s-22-3.6-22-8z" fill="#6f8bc4"/>
+        <path d="M10 27v12c0 4.4 9.9 8 22 8s22-3.6 22-8V27c0 4.4-9.9 8-22 8s-22-3.6-22-8z" fill="#4a6291"/>
+        <path d="M10 41v10c0 4.4 9.9 8 22 8s22-3.6 22-8V41c0 4.4-9.9 8-22 8s-22-3.6-22-8z" fill="#2f3e57"/>
+      </svg>
+      <div class="cap">
+        <b>xMart Data Warehouse</b>
+        Observations, metadata, configuration<br>
+        and reference data, version history
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body></html>
