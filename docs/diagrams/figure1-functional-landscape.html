@@ -7,17 +7,19 @@
    THE LAYOUT IS THE REFERENCE'S, NOT A STACK. That is the whole point of this figure and it
    is what an earlier revision got wrong. The arrangement is radial:
 
-     · a separate dashed frame at the top holding the user communities, with the portal
-       label sitting between them rather than above them;
+     · a narrower dashed frame at the top holding the portal label over the three user
+       communities, centred on and overlapping the frame below it;
      · one dashed frame below it containing three columns — modules down the left, the
        system core in the middle, modules down the right;
      · the core is a grey box carrying the solution name over a 2x2 grid of white dashed
        panels of cross-cutting capability;
      · the two data stores and the external ecosystem hang below the core, in the
        reference's bottom-panel position;
-     · the staff-user figure sits outside the frame. The reference puts it on the right;
-       here it is centred on the bottom row, which costs no width — width is the scarce
-       dimension because the figure is placed in a portrait .docx page.
+     · the reference's staff-user clip art has no counterpart here. It was built and then
+       hidden rather than deleted (`display:none` at the foot of the body): the three user
+       communities in the top frame already say who uses the system, and a second, vaguer
+       "staff users" glyph under them said it again with less information. Restore it only
+       if the top frame ever loses those blocks.
 
    A module is a tinted header bar that fades out to the right, with a square-bulleted list
    under it and NO box around it. Boxes around the modules would fight the dashed frames and
@@ -54,6 +56,10 @@
   --t1:#CFE0F6;  --t2:#DCDAEE;  --t3:#CCE6E1;  --t4:#D9EBCF;  --t5:#F8E3C6;
   --t6:#F7D8D8;  --t7:#F5D9EC;  --t8:#D5E4F0;  --t9:#EBE4CF;
   --t-xmart:#C6E3DC;  --t-db:#D3E1F5;  --t-eco:#DFE1E7;
+  /* The portal bar. Violet rather than a fourth pastel: it is the one tint not used by a
+     block or a module, so the bar reads as the surface the three communities sit on
+     rather than as a fourth community. */
+  --t-portal:#DCDAEE;
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -76,14 +82,7 @@ h1{font-size:26px;font-weight:700;color:var(--ink);line-height:1.2}
 }
 .ublock b{display:block;font-size:16px;font-weight:700;color:var(--ink);line-height:1.24}
 .ublock span{display:block;font-size:15px;font-weight:500;line-height:1.3;color:#2C3846;margin-top:3px}
-.u1{background:#CFE0F6} .u2{background:#D9EBCF} .u3{background:#F8D9C6} .u4{background:#DCDAEE}
-/* The reference sets its portal label as plain text between the user blocks, not in a box. */
-.portal .label{
-  flex:0 0 128px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;
-}
-.portal .label b{font-size:17px;font-weight:700;color:var(--ink);line-height:1.2}
-.portal .label span{font-size:15px;font-weight:500;color:var(--muted);line-height:1.3;margin-top:3px}
+.u1{background:#CFE0F6} .u2{background:#D9EBCF} .u3{background:#F8D9C6}
 
 /* ---- three columns ---------------------------------------------------- */
 .cols{display:flex;gap:13px;align-items:flex-start}
@@ -138,26 +137,76 @@ h1{font-size:26px;font-weight:700;color:var(--ink);line-height:1.2}
   display:flex;align-items:center;justify-content:center;
 }
 .staff b{display:block;font-size:16px;font-weight:700;color:var(--ink);line-height:1.24}
+
+/* ---- the top frame, overlapping the landscape frame -------------------
+   The top frame is narrower than the landscape frame and centred on it, and the
+   landscape frame's dashed top border runs through the top frame's vertical middle:
+   the border arrives at one side, disappears behind the opaque white panel, and leaves
+   at the other. That is what makes the two frames read as one composition rather than
+   two stacked boxes.
+
+   BOTH OFFSETS ARE DERIVED FROM --top-h, NOT GUESSED, and that is the only reason the
+   alignment is exact. The landscape frame is pulled up by half the top frame's height,
+   then padded back down by the same half plus its own 13px padding so the columns still
+   clear it. --top-h is a fixed height rather than a min-height for the same reason: if
+   the top frame could grow with its content, the border would stop landing on its
+   middle and the overlap would drift. Content that no longer fits means raising
+   --top-h — never removing the height. Everything stays in normal flow, so nothing
+   overflows the body box that render.mjs screenshots. */
+:root{ --top-h:115px; }
+
+.top-band{display:flex;justify-content:center;position:relative;z-index:2}
+.frame-top{
+  width:805px;height:var(--top-h);
+  /* Gap cut from 11 to 6 to pay for the portal bar's padding — see .portal-label. */
+  display:flex;flex-direction:column;justify-content:center;gap:6px;
+}
+.frame-mid{
+  margin-top:calc(var(--top-h) / -2);
+  padding-top:calc(var(--top-h) / 2 + 13px);
+}
+
+/* Row 1 — the portal bar. Same idiom as a module header: a tint that fades out to the
+   paper. The module bars fade one way only because their text is left-aligned; this one
+   is centred and spans the full row, so it fades symmetrically from both ends instead.
+
+   The 5px of vertical padding is paid for by cutting .frame-top's gap from 11 to 6, so
+   --top-h is unchanged and the figure is no taller than it was. Do not add padding here
+   without taking it back from that gap. */
+.portal-label{
+  display:flex;justify-content:center;align-items:baseline;gap:9px;
+  border-radius:4px;padding:5px 14px;
+  background:linear-gradient(90deg,#fff 0%,var(--t-portal) 26%,var(--t-portal) 74%,#fff 100%);
+}
+.portal-label b{font-size:18px;font-weight:700;color:var(--ink);line-height:1.2}
+.portal-label span{font-size:15px;font-weight:500;color:var(--muted);line-height:1.2}
+
+/* Row 2 — the three user communities, one row, equal widths, centred. */
+.portal-top{margin-bottom:0}
+
 </style></head>
 <body>
-
+<!-- 
 <h1>Health Accounts Data Management System — Functional Landscape</h1>
 <div class="fig-sub">User communities, functional modules, shared platform services and the systems with which the DMS exchanges data.</div>
+ -->
 
 <!-- ============ top: user communities and the portal ============ -->
-<div class="frame portal">
-  <div class="ublock u1"><b>WHO Health Accounts Team</b><span>HQ · consolidation and publication</span></div>
-  <div class="ublock u2"><b>Regional &amp; Country Offices</b><span>Review and follow-up, own countries</span></div>
-  <div class="label">
-    <b>Web Portal</b>
-    <span>WHO Entra ID<br>single sign-on</span>
+<div class="top-band">
+  <div class="frame frame-top">
+    <div class="portal-label">
+      <b>Web Portal</b>
+    </div>
+    <div class="portal portal-top">
+      <div class="ublock u1"><b>WHO Health Accounts Team</b><span>HQ · consolidation and publication</span></div>
+      <div class="ublock u2"><b>Regional &amp; Country Offices</b><span>Review and follow-up</span></div>
+      <div class="ublock u3"><b>External Users</b><span>Guests · focal points and partners</span></div>
+    </div>
   </div>
-  <div class="ublock u3"><b>External Users</b><span>Entra ID guests · focal points and partners</span></div>
-  <div class="ublock u4"><b>Administrators</b><span>Configuration, permissions, rules</span></div>
 </div>
 
 <!-- ============ the landscape ============ -->
-<div class="frame">
+<div class="frame frame-mid">
   <div class="cols">
 
     <!-- ---- left column ---- -->
