@@ -32,7 +32,14 @@ const FIGURES = [
   ['figure4-app-architecture', 'Figure 4 — App architecture'],
 ];
 
-const WIDE = { 'figure4-app-architecture': 1500 };
+// Canvas width per figure, defaulting to 1300. This is not a cosmetic choice: every figure
+// is placed 6.5in wide, so a narrower canvas prints larger type. Figure 1 is portrait at
+// 1000px for exactly that reason; figure 4 needs 1500px to hold its landscape arrangement.
+// Must match the `body { width }` in the figure's own stylesheet.
+const CANVAS = {
+  'figure1-functional-landscape': 1000,
+  'figure4-app-architecture': 1500,
+};
 
 const browser = await chromium.launch();
 const page = await browser.newPage({
@@ -48,7 +55,7 @@ const PAGE_TEXT_IN = 9.25;          // Letter, 1in bottom / 0.75in top margin
 // Reported for information only — see the note in the loop below.
 
 for (const [slug, label] of FIGURES) {
-  const cssWidth = WIDE[slug] ?? 1300;
+  const cssWidth = CANVAS[slug] ?? 1300;
   await page.setViewportSize({ width: cssWidth, height: 1200 });
   await page.goto(pathToFileURL(join(here, `${slug}.html`)).href, { waitUntil: 'load' });
   // Web fonts are loaded from disk via @font-face; without this the first paint can
