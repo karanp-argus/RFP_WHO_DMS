@@ -1,6 +1,7 @@
 # Handover — where this stands, and what to do next
 
-**Last updated:** 7 August 2026, end of Phase 8 — **the build is complete**.
+**Last updated:** 28 September 2026 — maintenance pass (see §2, *After Phase 8 — maintenance*).
+The build itself was completed on 7 August 2026 at the end of Phase 8.
 
 This file is deliberately **thin**. Everything durable already lives in three other
 documents, and duplicating them here would create a second source of truth that drifts out
@@ -36,7 +37,7 @@ All 8 phases are complete and verified in a browser. There is no next phase.
 | **2 — Setup module** | ✅ Done | All 7 tabs live against the mock client. `DataTable` with drag-reorderable headers (UC015, persisted). Cross builder, formula editor with per-country overrides, metadata fields, reporting follow-up. Read-only variant for regular users. |
 | **3 — Formula engine** | ✅ Done | `src/domain/formula/` — tokeniser, recursive-descent parser, AST, dependency graph with topological order and cycle detection, evaluator, null-policy guards, series maths, 10 functions. All 16 seeded formulas evaluate live on the Formulas tab with an AST/dependency inspector. **129 passing tests.** |
 | **4 — Workbook** | ✅ Done | The product. `react-datasheet-grid` with a frozen year header, a frozen variable label+code column and a frozen corner; filter chips serialised to the URL; editing with live recompute through the Phase 3 engine; three-mode clipboard; undo/redo; a metadata drawer *beside* the grid; series tools; bulk status; locking; version compare; xlsx export; Save → xMart. **166 passing tests** + a 34-check browser harness. |
-| **5 — Quality Checks** | ✅ Done | `src/domain/qc/` — ten rule categories, the UC054 threshold table, seventeen delivered rules, a pure runner. Rule list with developer / administrator / custom origins visibly distinct, rule editor with UC048 exclusions and a one-click reset, administrator-only thresholds, run by country or by attribute group, findings report with a scatter and .xlsx/.csv download, and **UC052 wired into the workbook** — cells ring in place. **241 passing tests** + a 49-check browser harness. |
+| **5 — Quality Checks** | ✅ Done | `src/domain/qc/` — ten rule categories, the UC054 threshold table, eighteen seeded rules (sixteen developer-delivered, one administrator, one custom), a pure runner. Rule list with developer / administrator / custom origins visibly distinct, rule editor with UC048 exclusions and a one-click reset, administrator-only thresholds, run by country or by attribute group, findings report with a scatter and .xlsx/.csv download, and **UC052 wired into the workbook** — cells ring in place. **241 passing tests** + a 49-check browser harness. |
 | **6 — Reports** | ✅ Done | `src/domain/report/` — field catalogue, definitions, unit/currency/scale, and `pivot.ts` with subtotals. Six delivered reports, a drag-based pivot builder with a live preview, favourites and drag-order that survive a reload, duplicate-as-custom, a run page with the unit / currency / scale / language prompts and a screen-or-download choice, the UC039 data tracking report, and the **UC042 background queue** producing one real `.xlsx` per country with an in-app notification carrying a working download link. Notification store + header bell built here. **299 passing tests** + a 51-check browser harness. |
 | **7 — Users, dashboard, integration** | ✅ Done | `src/domain/users/`, `src/domain/notify/`, `src/domain/integration/`, `src/domain/home/` — all pure and tested. The Users list with inline role/active controls, grant-access by email, the last-administrator guard, and no delete anywhere. The UC008 matrix with a live capability preview, feeding the same value `usePermissions` reads. The Home dashboard: reporting round, due dates, publication queue, quality findings, submissions and a completeness heatmap. The integration module in three tabs — live To-Be architecture, per-source sync, the API call log and UC044's dataset restore — plus the Dev drawer the header button has been toggling since Phase 0. The Annex 3 simulator answering all thirteen rows and producing a real CSV. The notifications module: event catalogue, subscriptions, and UC023 due dates as a second sender. **411 passing tests** + a 92-check browser harness. |
 | **8 — Polish, demo script, packaging** | ✅ Done | Route-level `React.lazy` on all 15 page components — the critical path is **225 kB gzipped**, down from 636 kB in one chunk — with `Suspense` + an `ErrorBoundary` inside the shell so a failed route keeps the navigation. `scripts/contrast-audit.mjs` promoted into the repo and grown to **52 pairs × 2 themes**, which found eight real failures and moved five token values. `scripts/bundle-report.mjs` as a critical-path gate. The keyboard pass (Esc on the two non-Radix panels; `Ctrl+Z` no longer hijacks text fields). The responsive sweep at 1920/1440/1280/1024/768 × both themes, which found one real overflow. Static hosting fixed for deep links (`404.html` + `scripts/serve-dist.mjs`). **[DEMO_SCRIPT.md](DEMO_SCRIPT.md)** and a rebuilt **[README.md](README.md)**. The CHE financing split now reconciles. **413 passing tests**, **386 asserted browser checks**, all re-run against the production build on a bare static server. |
@@ -50,6 +51,31 @@ packs are lazy chunks of 4–5 kB, not because they were inlined. **Arabic is la
 is not mirrored right-to-left**, and the run page says so when Arabic is selected. Test count
 413 → **479**; the reports harness 51 → **58 checks**, so 386 → **393** browser checks in total.
 See standing trade-off 10 for the two rules that keep this working.
+
+**After Phase 8 — maintenance (28 September 2026).** No new features. Two code fixes and a
+documentation sweep:
+
+- **Structural rule 2 was being bypassed.** Four modules outside the client imported the `db.ts`
+  overlay directly — the header's reset, the workbook's Save, the dataset-restore tab and the
+  workbook store. The mock's `putObservations` now stores what it accepts, as a warehouse would,
+  so the restore tab no longer writes the overlay by hand; Save builds its payload from
+  `currentSnapshot` and sends **only the fields that changed** (it used to send `value: null` for
+  a metadata-only edit, which was harmless only because the mock ignored the payload); reset is
+  `resetMockWarehouse()` on the mock client. `workbookStore` remains the one sanctioned importer,
+  because it *is* the unsaved-edit layer. `src/data/__tests__/boundary.test.ts` fails on a new
+  importer. Tests 479 → **483**.
+- **The QC scatter carried hex fallbacks** — the pre-Phase-8 status colours, so a copy had already
+  drifted from `globals.css`. Removed; an unresolved token now inherits `currentColor`.
+- **README's Annex 3 table overstated one row.** It called streaming *demonstrated as paged
+  retrieval*; `domain/integration/annex3.ts` has always marked it `design`. Corrected, along with
+  JSON output, which the code demonstrates and the table called merely "noted". Stale counts
+  fixed in README, DEMO_SCRIPT and DEPENDENCIES.
+- **Toolchain moved to Node 24.19.0 / npm 11.17.0** with the machine; every gate re-ran green.
+  Playwright 1.62.1 expects Chromium build 1234 and the local cache holds 1243, so a bare
+  `npm run verify:*` fails at launch. Build 1243 works when given explicitly as
+  `executablePath`; run that way, `verify:workbook` 34/34, `verify:qc` 49/49 and
+  `verify:phase7` 92/92 pass with no console errors, covering Save, the scatter and dataset
+  restore. `npx playwright install chromium` removes the need for the override.
 
 **Use-case coverage.** All **64** RFP rows are accounted for: **40 of the 41 Pilot use cases are
 demonstrable in the application** (35 fully, 5 with a stated limit — UC006, 028, 045, 046, 056),
@@ -85,7 +111,7 @@ behaviour is demonstrated.
 
 ```bash
 npx tsc -b        # typecheck
-npm test          # 479 unit tests (domain, formula engine, workbook, QC rules, pivot, users,
+npm test          # 483 unit tests (domain, formula engine, workbook, QC rules, pivot, users,
                   #                 notifications, Annex 3, dashboard, mock client, UC041 packs)
 npm run build     # production build
 ```
@@ -148,6 +174,7 @@ lazy chunk that fails to load or a route that 404s on a static host:
 ```bash
 npm run build && npm run serve:dist &
 DMS_URL=http://localhost:4173 npm run verify:workbook
+```
 
 `verify:phase7` leaves the app in its delivered state — it resets the permission matrix at
 the end. If a run is interrupted mid-section, the matrix may still hold Reports at *View*;
@@ -201,7 +228,7 @@ touch it does not undo something on purpose.
 - **`authStore.regularPermissions` is the only permission matrix.** `usePermissions` reads it, the
   UC008 editor writes it, the capability preview recomputes from the same functions the app gates
   on. Never a second table.
-- **Six pure domain areas**, all taking their data as arguments and returning values:
+- **Seven pure domain areas**, all taking their data as arguments and returning values:
   `domain/formula/`, `qc/`, `report/`, `users/`, `notify/`, `integration/`, `home/`. That is what
   makes the dashboard's numbers testable against the seeded corpus rather than only inspectable.
 - **`notificationStore` has two senders** — UC042's job queue and `useDueDateNotifications`

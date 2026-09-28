@@ -17,6 +17,12 @@
  * Observation *data* is not here. Edits are written straight through to the
  * `db.ts` overlay so the mock client serves them to every consumer; this store
  * only holds what the overlay cannot express.
+ *
+ * **This store is the one module besides the mock client allowed to touch
+ * `db.ts`** (CLAUDE.md structural rule 2). It is the unsaved-edit layer: a
+ * production DMS keeps those drafts in the browser too, and they reach xMart
+ * only through `putObservations`. Everything else reads edits through
+ * `currentSnapshot` below. `boundary.test.ts` fails on any new importer.
  */
 
 import { create } from 'zustand'

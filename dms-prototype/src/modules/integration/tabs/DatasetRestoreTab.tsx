@@ -27,7 +27,6 @@ import { CountryPicker } from '@/components/common/CountryPicker'
 import { EmptyState } from '@/components/common/EmptyState'
 import { FIRST_YEAR, LAST_YEAR } from '@/domain/constants'
 import { REPORT_DEMO_COUNTRIES } from '@/data/seed/reports'
-import { applyEdits } from '@/data/db'
 import { mockXMartClient } from '@/data/xmart/mockClient'
 import type { DatasetAsOfResult } from '@/data/xmart/client'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -80,15 +79,9 @@ export function DatasetRestoreTab() {
     try {
       const authorId = user?.id ?? 'unknown'
       // UC046 — the restore is a push like any other edit, carrying the author.
+      // The warehouse holds it once accepted; invalidating the cache is what
+      // makes the workbook show it.
       const put = await mockXMartClient.putObservations(
-        result.changes.map((c) => ({
-          observationKey: c.observationKey,
-          value: c.asOfValue,
-          authorId,
-        })),
-      )
-      // And it lands in the local overlay so the workbook shows it immediately.
-      applyEdits(
         result.changes.map((c) => ({
           observationKey: c.observationKey,
           value: c.asOfValue,

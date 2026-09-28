@@ -21,7 +21,6 @@ import type { DataSheetGridRef } from 'react-datasheet-grid'
 import { Button } from '@/components/ui/button'
 import { EmptyState, LoadingState } from '@/components/common/EmptyState'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { getEdit } from '@/data/db'
 import { mockXMartClient } from '@/data/xmart/mockClient'
 import { COUNTRY_BY_ISO3 } from '@/data/seed/countries'
 import { YEARS } from '@/domain/constants'
@@ -522,14 +521,17 @@ export function WorkbookPage() {
 
   const handleSave = useCallback(async () => {
     if (dirtyKeys.length === 0) return
+    // Only the fields the user actually changed travel. The mock writes an
+    // accepted push into its store, so defaulting an untouched value to `null`
+    // would blank it on a metadata-only save.
     const changes = dirtyKeys.map((key) => {
-      const edit = getEdit(key)
+      const snap = currentSnapshot(key)
       return {
         observationKey: key,
-        value: edit?.value ?? null,
-        formula: edit?.formula ?? null,
-        metadata: edit?.metadata as Record<string, string> | undefined,
-        publishingStatus: edit?.publishingStatus,
+        ...(snap.value !== undefined ? { value: snap.value } : {}),
+        ...(snap.formula !== undefined ? { formula: snap.formula } : {}),
+        ...(snap.metadata ? { metadata: snap.metadata as Record<string, string> } : {}),
+        ...(snap.publishingStatus ? { publishingStatus: snap.publishingStatus } : {}),
         authorId: user?.id ?? 'unknown',
       }
     })

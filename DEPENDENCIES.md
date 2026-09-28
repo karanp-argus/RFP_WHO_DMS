@@ -56,8 +56,8 @@ was already installed:
 
 | Tool | Version | Notes |
 |---|---|---|
-| Node.js | 22.14.0 | Vite 8 requires ≥20.19. No feature here needs 24. |
-| npm | 10.9.2 | npm 12 is available; not adopted mid-project. Lockfile v3 either way. |
+| Node.js | 24.19.0 | Was 22.14.0 through Phase 8. The machine's Node moved to 24 on **28 September 2026** (not a project decision); every gate re-run green on it the same day — `tsc -b`, 483 tests, build, both audits. Vite 8 requires ≥20.19, so 22 remains a supported floor. |
+| npm | 11.17.0 | Was 10.9.2, moved with Node. Lockfile v3 either way; `npm ci` needs no change. |
 | TypeScript | 6.0.3 | Range is `~6.0.2` — **patch-only on purpose**. TS majors change inference and would surface as dozens of new errors across `domain/`. |
 
 ---
@@ -105,7 +105,7 @@ these versions, the ranges are.
 | Package | Installed | Reason for this version |
 |---|---|---|
 | **`@tanstack/react-table`** | **8.21.3** | **Pinned to v8 — DO NOT UPGRADE.** See §6.1. |
-| `@tanstack/react-virtual` | 3.14.9 | v3 is the stable line. Not yet imported — Phase 4 (workbook rows) and long Setup grids. |
+| `@tanstack/react-virtual` | 3.14.9 | v3 is the stable line. It is `react-datasheet-grid`'s own row virtualisation engine; no module imports it directly. |
 | `react-datasheet-grid` | 4.11.6 | The workbook grid. Chosen over Glide Data Grid because Glide's stable release peers on `react@16 \|\| 17 \|\| 18` only, with nothing past it but alphas, and it would add `lodash`, `marked` and `react-responsive-carousel` as peers. **Requires the `react-resize-detector` override below to run under React 19** — see §6.5. |
 | `react-resize-detector` | **12.3.0, via `overrides`** | Not a direct dependency — a transitive of `react-datasheet-grid`, forced up from the `7.1.2` that DSG requests. **DO NOT REMOVE THE OVERRIDE.** §6.5 has the crash it prevents. |
 
@@ -125,7 +125,7 @@ these versions, the ranges are.
 | **`xlsx` (SheetJS)** | **0.20.3, from `cdn.sheetjs.com`** | **Not from npm — DO NOT reinstall from npm.** See §6.2. |
 | `papaparse` | 5.5.4 | CSV read/write. Annex 3 makes CSV the mandatory interchange format ("CSV is 1/3 the size of json and by definition tabular"). |
 | `@types/papaparse` | 5.5.2 | Papa ships no types. |
-| `recharts` | 3.10.1 | Current major. Not yet imported — Phase 5 (QC outlier scatter), Phase 7 (dashboard). |
+| `recharts` | 3.10.1 | Current major. One consumer, the QC outlier scatter (`FindingsScatter.tsx`) — which is why it must not get a vendor chunk group (CLAUDE.md, Phase 8). |
 | ~~`date-fns`~~ | **removed at Phase 8** (was 4.4.0) | Never imported. All timestamp handling derives from `DEMO_NOW` with plain `Date` arithmetic. |
 | ~~`nanoid`~~ | **removed at Phase 8** (was 6.0.1) | Never imported. Seeded ids come from the deterministic hash — `nanoid` would have broken run-to-run reproducibility if it had ever been used for anything data-bearing. |
 
@@ -138,11 +138,11 @@ these versions, the ranges are.
 | `tailwindcss` | 4.3.3 | **v4 is required, not optional.** The token architecture depends on `@theme inline`, which emits `var(--who-x)` into utilities so they follow the active theme. v3 has no equivalent and light/dark would stop working. |
 | `@tailwindcss/vite` | 4.3.3 | v4's Vite plugin. Must track `tailwindcss` exactly. |
 | `tw-animate-css` | 1.4.0 | Animation utilities for Radix enter/exit states, imported in `globals.css`. Replaces v3-era `tailwindcss-animate`. |
-| `lucide-react` | 1.28.0 | Icons, 17 files. Maps 1:1 onto the reference design's bootstrap-icons vocabulary. |
-| `sonner` | 2.0.7 | Toasts, 6 files. **Brought `next-themes` in as a transitive dependency** — see §7.2. |
+| `lucide-react` | 1.28.0 | Icons, 62 files. Maps 1:1 onto the reference design's bootstrap-icons vocabulary. |
+| `sonner` | 2.0.7 | Toasts, 18 files. **Brought `next-themes` in as a transitive dependency** — see §7.2. |
 | `next-themes` | 0.4.6 | Light/dark switching. Framework-agnostic despite the name; writes a class on `<html>`. Now an **explicit** dependency because the app imports it directly. |
-| `cmdk` | 1.1.1 | Command palette behind `CountryPicker` and the Phase 4 variable pickers. Used via the generated `command.tsx`. |
-| `react-resizable-panels` | 4.12.2 | Behind the generated `resizable.tsx`. Not yet used; Phase 4 may use it for the workbook/metadata split. |
+| `cmdk` | 1.1.1 | Command palette behind `CountryPicker`, `VariablePicker` and the workbook filter chips. Used via the generated `command.tsx`. |
+| `react-resizable-panels` | 4.12.2 | Behind the generated `resizable.tsx`, which **nothing imports**. Phase 4 did not use it: the metadata drawer is a fixed-width flex sibling of the grid (§2.4). A removal candidate — not removed here, because removing it is a dependency change of its own with the full §8 checklist. |
 | `class-variance-authority` | 0.7.1 | Variant definitions in 5 generated components. |
 | `clsx` + `tailwind-merge` | 2.1.1 / 3.6.0 | The `cn()` helper. Both required — clsx joins, tailwind-merge resolves conflicting utilities. |
 | `@fontsource/source-sans-pro` | 5.3.0 | Self-hosted reference typeface, imported in `globals.css` at weights 300/400/600/700. Self-hosted so the demo works with no network. |
@@ -153,12 +153,12 @@ these versions, the ranges are.
 
 | Package | Installed | Reason for this version |
 |---|---|---|
-| `vitest` | 4.1.10 | Runs the 46 Phase 1 tests. Config lives in `vite.config.ts` and **must import `defineConfig` from `vitest/config`**, not `vite` — the `vite` export does not type the `test` key. |
+| `vitest` | 4.1.10 | Runs the unit suite — 483 tests across 15 files. Config lives in `vite.config.ts` and **must import `defineConfig` from `vitest/config`**, not `vite` — the `vite` export does not type the `test` key. |
 | `jsdom` | 29.1.1 | Test environment. Required, not optional: `data/db.ts` reads `localStorage`, and stubbing it would test the stub rather than the overlay. |
 | `oxlint` | 1.77.0 | Linter. Three `only-export-components` warnings remain in generated `components/ui/` files — do not fix those, they would return on the next `shadcn add`. Authored code is clean. |
 | `@types/node` | 24.13.3 | For `node:path` in `vite.config.ts`. |
 | `@types/react` / `@types/react-dom` | 19.2.18 / 19.2.4 | Track React 19. |
-| `playwright` | 1.62.1 | Drives the four `npm run verify:*` browser checks in `scripts/`. The bare `playwright` package, not `@playwright/test` — these are plain Node scripts asserting via console output, not a test-runner suite, because they are diagnostic harnesses rather than CI gates. Added at handover (6 Aug 2026); previously run from a temp scratchpad that had its own install, so the scripts could not have run on a colleague's machine. Requires a one-off `npx playwright install chromium`. |
+| `playwright` | 1.62.1 | Drives the eleven `npm run verify:*` browser harnesses in `scripts/`. The bare `playwright` package, not `@playwright/test` — these are plain Node scripts asserting via console output, not a test-runner suite, because they are diagnostic harnesses rather than CI gates. Added at handover (6 Aug 2026); previously run from a temp scratchpad that had its own install, so the scripts could not have run on a colleague's machine. Requires a one-off `npx playwright install chromium`, **for this exact version**: 1.62.1 expects Chromium build 1234, and a browser cache holding a different build (1243 was present on 28 Sep 2026) fails at launch with "Executable doesn't exist". Build 1243 itself works when passed as `executablePath` — verified on 28 Sep 2026, three harnesses clean — so a mismatched cache needs either the install or that override, not a Playwright upgrade. |
 | ~~`@faker-js/faker`~~ | **removed at Phase 8** (was 10.5.0) | Never imported. Phase 1 seeds are curated or hash-derived because faker output is not reproducible across runs, which is the property the whole demo rests on. |
 
 ---
@@ -197,8 +197,8 @@ triggers a cascade of `ERESOLVE` peer conflicts against React 19.
 | `getCoreRowModel()`, `getSortedRowModel()`, `getFilteredRowModel()`, `getPaginationRowModel()` | Removed. Replaced by feature composition — `tableFeatures`, `columnOrderingFeature`, `rowSortingFeature`, … |
 | Direct `table.getState()` reads | Deprecated in favour of atoms, `table.Subscribe`, `useSelector(table.store, …)` |
 
-`DataTable.tsx` uses the v8 API throughout and is consumed by Setup, and will be by Users,
-Reports and Quality Checks. Migrating means rewriting the component and re-verifying UC015
+`DataTable.tsx` uses the v8 API throughout and is consumed by Setup, Users, Reports and
+Quality Checks. Migrating means rewriting the component and re-verifying UC015
 column reordering.
 
 `^8.21.3` already blocks 9.x. The failure mode is `npm i @tanstack/react-table` with no

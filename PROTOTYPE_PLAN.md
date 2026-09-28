@@ -639,7 +639,8 @@ and it belongs with the Phase 7 admin screens rather than bolted onto the grid.
 **Done when:** running the full predefined set over EURO produces a report with real findings that trace back to the defects planted in Phase 1, and running from a workbook visibly marks the offending cells. → **UC047, 048, 050, 052, 053, 054, 055** (+ 049, 051).
 
 **Outcome (built, verified, committed).** `src/domain/qc/` is pure and tested: rule
-types, the UC054 threshold table, seventeen delivered rules, the runner, and the UC051
+types, the UC054 threshold table, eighteen seeded rules (sixteen developer-delivered — *corrected
+from "seventeen" on 28 Sep 2026; the Phase 5 commit already held eighteen*), the runner, and the UC051
 exchange format. Above it, `qcStore`, `useQcRun`, three tabs, a rule editor, a report
 page and the workbook integration. **241 passing tests** (50 new domain tests, 25 new
 corpus tests) and a **49-check browser harness** (`npm run verify:qc`).

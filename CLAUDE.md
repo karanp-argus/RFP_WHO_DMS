@@ -32,7 +32,11 @@ npm run serve:dist       # serve dist/ with SPA fallback, zero dependencies — 
 1. **`src/domain/` never imports React, a store, or a component.** It is pure,
    unit-testable logic and the only part that survives into production.
 2. **All data access goes through `XMartClient`** (`src/data/xmart/client.ts`). No module
-   reads `db.ts` directly. When xMart is real, one file changes.
+   reads `db.ts` directly. When xMart is real, one file changes. **Two sanctioned
+   exceptions:** the mock client, whose warehouse the overlay is, and `workbookStore`, which
+   is the unsaved-edit layer. Everything else reads a draft through `currentSnapshot` and
+   writes through `putObservations`, which stores what it accepts. `boundary.test.ts`
+   fails on a new importer.
 3. **`src/routes.tsx` is the single source of truth for navigation.** Sidebar items, page
    titles and permission gates are derived from it — never hand-maintained alongside it.
 4. **Every dependency change is recorded in [DEPENDENCIES.md](DEPENDENCIES.md) in the same
