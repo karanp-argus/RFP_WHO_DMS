@@ -454,9 +454,10 @@ it.
 
 Then scroll to the evidence table.
 
-> *"Ten of the thirteen rows are demonstrated live. Two — OAuth 2.0 and HTTPS — are marked as
-> **design commitments**, because there is no server here and claiming otherwise would be the
-> fastest way to lose your trust. That distinction is on the screen, not in a footnote."*
+> *"Of the ten mandatory rows, eight are demonstrated live. Two — OAuth 2.0 and HTTPS — are
+> marked as **design commitments**, because there is no server here and claiming otherwise
+> would be the fastest way to lose your trust. Streaming is marked the same way, for the same
+> reason. That distinction is on the screen, not in a footnote."*
 
 ---
 
@@ -481,7 +482,7 @@ Pick **one**. Do not try to fit two.
 | Question | Answer |
 |---|---|
 | *"Is this the real system?"* | *"No. It is the Pilot scope built as a front end against a mocked xMart, so you can click every use case in the proposal instead of reading about it. The developer drawer shows you exactly where the boundary is."* |
-| *"How much of the RFP is this?"* | *"All 41 Pilot use cases, plus 12 of the 23 non-Pilot ones. The matrix is in the README, and where something is partial it says so and says why."* |
+| *"How much of the RFP is this?"* | *"Forty of the forty-one Pilot use cases, in the application — the forty-first is phased implementation, which is our delivery plan rather than software. Plus thirteen of the twenty-three non-Pilot ones in full, and seven more in part. The matrix is in the README, and where something is partial it says so and says why."* |
 | *"Where does the data come from?"* | *"It is generated from a seeded hash — the same on every machine, every run. Real ISO codes, real WHO regions, real SHA 2011 classifications, real exchange rates, and the income gradients are unit-tested because an HA economist reads those first."* |
 | *"Can it handle 25 million rows?"* | *"That number describes what is retrieved from xMart, and it belongs to the API layer. A workbook is a bounded window of a few thousand cells. The pagination and the incremental `LastModified` pull are both on the retrieval API screen."* |
 | *"What is not built?"* | *"Right-to-left layout for Arabic — scoped in the proposal rather than faked. Server-side virus scanning on import, which is called out in the UI where it would happen. And persistence of quality-check findings and generated report files, which need a backend to hold them. All of it is listed in the README's mock-vs-real table."* |

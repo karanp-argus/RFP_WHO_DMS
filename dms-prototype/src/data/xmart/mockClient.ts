@@ -23,11 +23,12 @@ import type {
   ImportBatch,
   MetadataFieldDef,
   Observation,
+  ObservationMetadata,
   ObservationVersion,
   ReportingContact,
   Variable,
 } from '@/domain/types'
-import { getEdit, nextBatchId } from '../db'
+import { applyEdits, getEdit, nextBatchId, resetDemoData } from '../db'
 import { buildCrossObservation, buildObservation } from '../generators/observations'
 import { int, pick, range, shuffled } from '../generators/seedRandom'
 import { buildVersions } from '../generators/versions'
@@ -511,6 +512,20 @@ export const mockXMartClient: XMartClient = {
             errors.push({ observationKey: c.observationKey, reason: 'Malformed observation key' })
           }
         }
+
+        // The overlay is this mock's warehouse, so an accepted push lands in it
+        // — as it would in xMart — and every later read serves the pushed value.
+        // Callers must not write it themselves (CLAUDE.md structural rule 2).
+        const rejected = new Set(errors.map((e) => e.observationKey))
+        applyEdits(
+          changes
+            .filter((c) => !rejected.has(c.observationKey))
+            .map((c) => ({
+              ...c,
+              metadata: c.metadata as ObservationMetadata | undefined,
+            })),
+        )
+
         return {
           accepted: changes.length - errors.length,
           rejected: errors.length,
@@ -582,3 +597,12 @@ export const POPULATED_DIMENSIONS: readonly DimensionCode[] = DIMENSIONS.filter(
 
 /** Stable key for an observation, re-exported so modules need one import. */
 export { observationKey, dimsKey }
+
+/**
+ * Prototype-only: return the mock warehouse to its seeded state. Backs the
+ * header's "Reset demo data". Deliberately not on `XMartClient` — nobody resets
+ * the real xMart from DMS, so the real client has no equivalent.
+ */
+export function resetMockWarehouse(): void {
+  resetDemoData()
+}

@@ -20,7 +20,7 @@ a pivot, flip a permission and watch the controls disappear.
 | **Pilot use cases demonstrable here** | **40 of 41** — 35 fully, 5 with a stated limit. The 41st, UC061 *Phased implementation*, is a delivery plan answered by the proposal rather than by software ([§5](#5-use-case-coverage)) |
 | **Non-Pilot (N) use cases covered as a bonus** | **13** fully, 7 partial, 3 not built — 23 of 23 accounted for |
 | **Annex 3 API requirements** | 10 of 10 mandatory on one screen — 8 live, 2 stated as design commitments |
-| **Unit tests** | 479 |
+| **Unit tests** | 483 |
 | **Browser verification checks** | 393 asserted, across 7 harnesses (4 more report values rather than assert) |
 | **First-paint transfer** | 226 kB gzipped (was 636 kB before the Phase 8 route split). The five UC041 language packs are lazy chunks of 4–5 kB gzipped each and reach the browser only when a report is run in that language |
 
@@ -84,7 +84,7 @@ cannot load ES modules (CORS blocks `type="module"`) and has no notion of a path
 
 ```bash
 npx tsc -b            # typecheck
-npm test              # 413 unit tests
+npm test              # 483 unit tests
 npm run build         # production build
 ```
 
@@ -191,8 +191,8 @@ They are stated in full in [CLAUDE.md](CLAUDE.md).
 
 | # | Rule | Why it matters to a reviewer |
 |---|---|---|
-| 1 | **`src/domain/` never imports React, a store or a component.** | It is the only part that survives into production. It is pure, and it holds all 413 unit tests. |
-| 2 | **All data access goes through `XMartClient`.** No module reads `db.ts`. | When xMart is real, **one file changes**. That is the claim the boundary table below rests on. |
+| 1 | **`src/domain/` never imports React, a store or a component.** | It is the only part that survives into production. It is pure, so it is unit-tested with no browser, no store and no mock. |
+| 2 | **All data access goes through `XMartClient`.** No module reads `db.ts`, except the mock client and the workbook's unsaved-edit store. | When xMart is real, **one file changes**. That is the claim the boundary table below rests on, and `boundary.test.ts` fails if a new module reaches past the client. |
 | 3 | **`src/routes.tsx` is the single source of truth for navigation.** | The sidebar, page titles and permission gates are derived from it, never maintained alongside it. |
 | 4 | **Every dependency change is recorded in [DEPENDENCIES.md](DEPENDENCIES.md).** | A bare `npm i @tanstack/react-table` once silently installed v9 — a ground-up API rewrite that would have broken every grid. |
 
@@ -433,10 +433,14 @@ nice-to-have rows.
 | UTC `LastModified`, range-filterable, reflecting inserts, updates **and** deletes | **Demonstrated** — `Sys_CommitDateUtc`, asserted in a test |
 | Return all data unfiltered | **Demonstrated** |
 | Retrieve soft-deleted records with an `IsDeleted` filter | **Demonstrated** — `Sys_IsDeleted` |
-| Streaming (should-have) | **Demonstrated** as paged retrieval |
 | OAuth 2.0 | **Design commitment** — no server exists to hold a token endpoint |
 | HTTPS only | **Design commitment** — a localhost demo is `http://` |
-| JSON, non-PK filtering (nice-to-have) | Noted; CSV is Annex 3's own stated preference |
+| Streaming (should-have) | **Design commitment** — chunked transfer, rows written as read. Paging is demonstrated; streaming cannot be exhibited in a browser prototype |
+| JSON output (nice-to-have) | **Demonstrated** — `format=json`, same rows and column names as the CSV |
+| Filtering on non-key fields (nice-to-have) | **Design commitment** — the query surface accepts it; the form does not expose it |
+
+Thirteen rows in all: 9 demonstrated, 4 design commitments. The evidence level of every row is
+data in `src/domain/integration/annex3.ts`, and this table must follow it — never the reverse.
 
 ---
 

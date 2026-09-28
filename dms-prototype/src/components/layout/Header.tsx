@@ -14,7 +14,7 @@ import { ChevronDown, HelpCircle, Menu, RotateCcw, Search, Terminal } from 'luci
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { cn } from '@/lib/utils'
-import { resetDemoData } from '@/data/db'
+import { resetMockWarehouse } from '@/data/xmart/mockClient'
 import { ThemeToggle } from './ThemeToggle'
 import { NotificationBell } from './NotificationBell'
 import {
@@ -161,7 +161,7 @@ export function Header() {
               onSelect={() => {
                 // Seeded observations are derived, not stored, so a reset only
                 // has to drop the edit overlay — see data/db.ts.
-                resetDemoData()
+                resetMockWarehouse()
                 window.location.reload()
               }}
             >

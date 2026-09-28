@@ -59,10 +59,13 @@ export interface FindingsScatterProps {
  * subscribes to `next-themes` for exactly that reason — the value is unused
  * except as a render trigger.
  */
-function token(name: string, fallback: string): string {
-  if (typeof window === 'undefined') return fallback
+function token(name: string): string {
+  // No hex fallback: colour lives only in globals.css (CLAUDE.md), and a copy
+  // here would drift — the previous one still held the pre-Phase-8 values. An
+  // unresolved token inherits the text colour rather than inventing one.
+  if (typeof window === 'undefined') return 'currentColor'
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  return value || fallback
+  return value || 'currentColor'
 }
 
 export function FindingsScatter({ findings, thresholds, height = 300 }: FindingsScatterProps) {
@@ -89,11 +92,11 @@ export function FindingsScatter({ findings, thresholds, height = 300 }: Findings
     )
   }
 
-  const fail = token('--who-fail', '#c0392b')
-  const warn = token('--who-warn', '#9c6415')
-  const grid = token('--who-border', '#e5e7eb')
-  const axis = token('--who-text-muted', '#6b7280')
-  const surface = token('--who-surface-raised', '#ffffff')
+  const fail = token('--who-fail')
+  const warn = token('--who-warn')
+  const grid = token('--who-border')
+  const axis = token('--who-text-muted')
+  const surface = token('--who-surface-raised')
 
   const max = Math.max(...points.map((p) => p.deviation))
 

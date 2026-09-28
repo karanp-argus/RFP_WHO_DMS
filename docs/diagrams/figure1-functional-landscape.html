@@ -1,0 +1,402 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* Functional Landscape, laid out after
+   Reference/Functional Landscape - 25 Timor Leste DCMS - Document Collection Management System.png.
+
+   THE LAYOUT IS THE REFERENCE'S, NOT A STACK. That is the whole point of this figure and it
+   is what an earlier revision got wrong. The arrangement is radial:
+
+     · a narrower dashed frame at the top holding the portal label over the three user
+       communities, centred on and overlapping the frame below it;
+     · one dashed frame below it containing three columns — modules down the left, the
+       system core in the middle, modules down the right;
+     · the core is a grey box carrying the solution name over a 2x2 grid of white dashed
+       panels of cross-cutting capability;
+     · the two data stores and the external ecosystem hang below the core, in the
+       reference's bottom-panel position;
+     · the reference's staff-user clip art has no counterpart here. It was built and then
+       hidden rather than deleted (`display:none` at the foot of the body): the three user
+       communities in the top frame already say who uses the system, and a second, vaguer
+       "staff users" glyph under them said it again with less information. Restore it only
+       if the top frame ever loses those blocks.
+
+   A module is a tinted header bar that fades out to the right, with a square-bulleted list
+   under it and NO box around it. Boxes around the modules would fight the dashed frames and
+   the grey core for attention, and the reference deliberately has none.
+
+   CANVAS IS 1000px AND THE FIGURE IS PORTRAIT. Placed 6.5in wide, 1 css px prints at
+   0.468pt, so the 15px floor used throughout is 7.0pt. The landscape figures 2 to 4 sit at
+   1300-1500px and print their small type at 3.6-4.4pt. Nothing here may be set below 15px,
+   and the canvas may not be widened to make room for content; shorten the content instead.
+
+   TYPE IS SET FOR PRINT, NOT FOR THE SCREEN. Body text is Roboto Medium on near-black,
+   not Open Sans Regular on the WHO greys used elsewhere in the prototype: at 7pt inside a
+   .docx those greys go muddy and the regular weight goes thin. Do not lighten these
+   colours back towards the palette in dms-prototype/src/styles/globals.css — the figure is
+   read on paper, the app is not.
+
+   No HLR/UC reference codes: they were tried in the header bars and made every module read
+   as two headings. The traceability belongs in the prose, where it can be complete. */
+
+@font-face { font-family: 'Roboto';    font-weight: 400; src: url('fonts/Roboto-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Roboto';    font-weight: 500; src: url('fonts/RobotoMedium-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Roboto';    font-weight: 700; src: url('fonts/Roboto-bold.ttf') format('truetype'); }
+@font-face { font-family: 'Open Sans'; font-weight: 400; src: url('fonts/OpenSans-regular.ttf') format('truetype'); }
+@font-face { font-family: 'Open Sans'; font-weight: 700; src: url('fonts/OpenSans-bold.ttf') format('truetype'); }
+
+:root{
+  --ink:#152433;      /* header bars, core and block titles */
+  --text:#22303F;     /* bullets and panel text — near black, for print */
+  --muted:#3F4B59;
+  --dash:#B9BAC8;
+  --bullet:#55606E;
+
+  /* Module header tints. Varied, as in the reference; the colour is decorative. */
+  --t1:#CFE0F6;  --t2:#DCDAEE;  --t3:#CCE6E1;  --t4:#D9EBCF;  --t5:#F8E3C6;
+  --t6:#F7D8D8;  --t7:#F5D9EC;  --t8:#D5E4F0;  --t9:#EBE4CF;
+  --t-xmart:#C6E3DC;  --t-db:#D3E1F5;  --t-eco:#DFE1E7;
+  /* The portal bar. Violet rather than a fourth pastel: it is the one tint not used by a
+     block or a module, so the bar reads as the surface the three communities sit on
+     rather than as a fourth community. */
+  --t-portal:#DCDAEE;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Roboto',Arial,sans-serif;color:var(--text);background:#fff;
+  width:1000px;padding:22px 24px 22px;-webkit-font-smoothing:antialiased;
+}
+
+h1{font-size:26px;font-weight:700;color:var(--ink);line-height:1.2}
+.fig-sub{font-size:15px;font-weight:400;color:var(--muted);line-height:1.35;margin:3px 0 13px}
+
+/* ---- dashed frames ---------------------------------------------------- */
+.frame{border:1.5px dashed var(--dash);border-radius:8px;background:#fff;padding:13px}
+
+/* ---- top: user communities and the portal ----------------------------- */
+.portal{display:flex;gap:10px;align-items:stretch;margin-bottom:12px}
+.ublock{
+  flex:1 1 0;min-width:0;border-radius:5px;padding:10px 11px;
+  display:flex;flex-direction:column;justify-content:center;text-align:center;
+}
+.ublock b{display:block;font-size:16px;font-weight:700;color:var(--ink);line-height:1.24}
+.ublock span{display:block;font-size:15px;font-weight:500;line-height:1.3;color:#2C3846;margin-top:3px}
+.u1{background:#CFE0F6} .u2{background:#D9EBCF} .u3{background:#F8D9C6}
+
+/* ---- three columns ---------------------------------------------------- */
+.cols{display:flex;gap:13px;align-items:flex-start}
+.col-side{flex:0 0 250px}
+.col-mid {flex:1 1 auto;min-width:0}
+
+/* ---- a module: tinted fading header bar + square-bulleted list --------- */
+.mod{margin-bottom:12px}
+.mod:last-child{margin-bottom:0}
+.mod .hd{
+  border-radius:4px;padding:6px 11px 7px;
+  background:linear-gradient(90deg,var(--tint) 0%,var(--tint) 52%,#fff 100%);
+}
+.mod .hd b{display:block;font-size:16px;font-weight:700;color:var(--ink);line-height:1.24}
+.mod .hd span{display:block;font-size:15px;font-weight:500;color:#3A4654;line-height:1.25;margin-top:1px}
+.mod ul{list-style:none;padding:7px 2px 0 3px}
+.mod li{font-size:15px;font-weight:500;line-height:1.4;color:var(--text);padding-left:14px;position:relative}
+.mod li::before{
+  content:'';position:absolute;left:0;top:7px;width:6px;height:6px;background:var(--bullet);
+}
+/* Two columns for the ecosystem list, which is wide and short rather than narrow and tall. */
+.mod.two-col ul{columns:2;column-gap:16px}
+.mod.two-col li{break-inside:avoid}
+.m1{--tint:var(--t1)} .m2{--tint:var(--t2)} .m3{--tint:var(--t3)}
+.m4{--tint:var(--t4)} .m5{--tint:var(--t5)} .m6{--tint:var(--t6)}
+.m7{--tint:var(--t7)} .m8{--tint:var(--t8)} .m9{--tint:var(--t9)}
+.m-xmart{--tint:var(--t-xmart)} .m-db{--tint:var(--t-db)} .m-eco{--tint:var(--t-eco)}
+
+/* ---- the system core -------------------------------------------------- */
+.core{background:#ECECF2;border-radius:8px;padding:13px}
+.core h2{font-size:19px;font-weight:700;color:var(--ink);text-align:center;line-height:1.25;margin-bottom:11px}
+.core-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.svc{
+  background:#fff;border:1.5px dashed var(--dash);border-radius:6px;
+  padding:13px 10px;display:flex;flex-direction:column;justify-content:center;
+  text-align:center;gap:8px;
+}
+.svc div{font-size:15px;font-weight:500;line-height:1.3;color:var(--text)}
+
+/* The two stores and the ecosystem hang below the core. */
+.stores{display:flex;gap:11px;align-items:flex-start;margin-top:12px}
+.stores > *{flex:1 1 0;min-width:0}
+
+/* ---- bottom: the staff-user figure, centred --------------------------- */
+.staff{text-align:center;margin-top:14px}
+/* Stands in for the clip-art figures in the reference, built the same way as the users
+   block in figure4: a dashed disc holding a flat glyph. A hand-traced illustration reads
+   as wrong and a photo-real one cannot be produced honestly. */
+.staff .disc{
+  width:74px;height:74px;border-radius:50%;margin:0 auto 6px;
+  background:#D9EFF3;border:2.5px dashed #4EA9B6;
+  display:flex;align-items:center;justify-content:center;
+}
+.staff b{display:block;font-size:16px;font-weight:700;color:var(--ink);line-height:1.24}
+
+/* ---- the top frame, overlapping the landscape frame -------------------
+   The top frame is narrower than the landscape frame and centred on it, and the
+   landscape frame's dashed top border runs through the top frame's vertical middle:
+   the border arrives at one side, disappears behind the opaque white panel, and leaves
+   at the other. That is what makes the two frames read as one composition rather than
+   two stacked boxes.
+
+   BOTH OFFSETS ARE DERIVED FROM --top-h, NOT GUESSED, and that is the only reason the
+   alignment is exact. The landscape frame is pulled up by half the top frame's height,
+   then padded back down by the same half plus its own 13px padding so the columns still
+   clear it. --top-h is a fixed height rather than a min-height for the same reason: if
+   the top frame could grow with its content, the border would stop landing on its
+   middle and the overlap would drift. Content that no longer fits means raising
+   --top-h — never removing the height. Everything stays in normal flow, so nothing
+   overflows the body box that render.mjs screenshots. */
+:root{ --top-h:115px; }
+
+.top-band{display:flex;justify-content:center;position:relative;z-index:2}
+.frame-top{
+  width:805px;height:var(--top-h);
+  /* Gap cut from 11 to 6 to pay for the portal bar's padding — see .portal-label. */
+  display:flex;flex-direction:column;justify-content:center;gap:6px;
+}
+.frame-mid{
+  margin-top:calc(var(--top-h) / -2);
+  padding-top:calc(var(--top-h) / 2 + 13px);
+}
+
+/* Row 1 — the portal bar. Same idiom as a module header: a tint that fades out to the
+   paper. The module bars fade one way only because their text is left-aligned; this one
+   is centred and spans the full row, so it fades symmetrically from both ends instead.
+
+   The 5px of vertical padding is paid for by cutting .frame-top's gap from 11 to 6, so
+   --top-h is unchanged and the figure is no taller than it was. Do not add padding here
+   without taking it back from that gap. */
+.portal-label{
+  display:flex;justify-content:center;align-items:baseline;gap:9px;
+  border-radius:4px;padding:5px 14px;
+  background:linear-gradient(90deg,#fff 0%,var(--t-portal) 26%,var(--t-portal) 74%,#fff 100%);
+}
+.portal-label b{font-size:18px;font-weight:700;color:var(--ink);line-height:1.2}
+.portal-label span{font-size:15px;font-weight:500;color:var(--muted);line-height:1.2}
+
+/* Row 2 — the three user communities, one row, equal widths, centred. */
+.portal-top{margin-bottom:0}
+
+</style></head>
+<body>
+<!-- 
+<h1>Health Accounts Data Management System — Functional Landscape</h1>
+<div class="fig-sub">User communities, functional modules, shared platform services and the systems with which the DMS exchanges data.</div>
+ -->
+
+<!-- ============ top: user communities and the portal ============ -->
+<div class="top-band">
+  <div class="frame frame-top">
+    <div class="portal-label">
+      <b>Web Portal</b>
+    </div>
+    <div class="portal portal-top">
+      <div class="ublock u1"><b>WHO Health Accounts Team</b><span>HQ · consolidation and publication</span></div>
+      <div class="ublock u2"><b>Regional &amp; Country Offices</b><span>Review and follow-up</span></div>
+      <div class="ublock u3"><b>External Users</b><span>Guests · focal points and partners</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ the landscape ============ -->
+<div class="frame frame-mid">
+  <div class="cols">
+
+    <!-- ---- left column ---- -->
+    <div class="col-side">
+
+      <div class="mod m1">
+        <div class="hd"><b>Home &amp; Dashboard</b></div>
+        <ul>
+          <li>Reporting round status</li>
+          <li>Publication readiness</li>
+          <li>Quality findings summary</li>
+          <li>Completeness and activity</li>
+        </ul>
+      </div>
+
+      <div class="mod m2">
+        <div class="hd"><b>Users &amp; Roles</b></div>
+        <ul>
+          <li>Access granting and roles</li>
+          <li>Configurable permissions</li>
+          <li>Country restrictions</li>
+          <li>Accounts disabled, not deleted</li>
+        </ul>
+      </div>
+
+      <div class="mod m3">
+        <div class="hd"><b>Setup &amp; Configuration</b></div>
+        <ul>
+          <li>Countries and currencies</li>
+          <li>Classifications and crosses</li>
+          <li>Metadata fields and lists</li>
+          <li>Formulas and variable groups</li>
+        </ul>
+      </div>
+
+      <div class="mod m4">
+        <div class="hd"><b>Workbook</b></div>
+        <ul>
+          <li>Spreadsheet view and edit</li>
+          <li>Range copy, paste and undo</li>
+          <li>Inline metadata beside grid</li>
+          <li>Series tools and edit locking</li>
+        </ul>
+      </div>
+
+      <div class="mod m5">
+        <div class="hd"><b>Formula Engine</b></div>
+        <ul>
+          <li>Parsing and validation</li>
+          <li>Dependency resolution</li>
+          <li>Null-condition handling</li>
+          <li>Per-country overrides</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- ---- centre: the system core ---- -->
+    <div class="col-mid">
+
+      <div class="core">
+        <h2>Health Accounts Data<br>Management System (DMS)</h2>
+        <div class="core-grid">
+          <div class="svc">
+            <div>Identity Management</div>
+            <div>Access Control</div>
+            <div>Role and Country Scoping</div>
+          </div>
+          <div class="svc">
+            <div>Calculation Engine</div>
+            <div>Quality Check Engine</div>
+            <div>Job Scheduler</div>
+          </div>
+          <div class="svc">
+            <div>Audit Trails</div>
+            <div>Data and Metadata Versioning</div>
+            <div>Notification Service</div>
+          </div>
+          <div class="svc">
+            <div>xMart Integration Layer</div>
+            <div>Import and Export (Excel, CSV)</div>
+            <div>Backup and Restore</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stores">
+        <div class="mod m-xmart">
+          <div class="hd"><b>WHO xMart Warehouse</b><span>authoritative record</span></div>
+          <ul>
+            <li>Observations and values</li>
+            <li>Observation metadata</li>
+            <li>Configuration data</li>
+            <li>Reference data</li>
+            <li>Version history</li>
+            <li>Legacy formulas</li>
+          </ul>
+        </div>
+        <div class="mod m-db">
+          <div class="hd"><b>DMS Local Database</b><span>operational store</span></div>
+          <ul>
+            <li>Users, roles, permissions</li>
+            <li>Quality rules and reports</li>
+            <li>Job state and edit locks</li>
+            <li>Notifications, audit log</li>
+            <li>Preferences and caches</li>
+            <li>Country restrictions</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mod m-eco two-col">
+        <div class="hd"><b>Health Accounts Ecosystem</b><span>exchanges data with xMart · outside DMS scope</span></div>
+        <ul>
+          <li>eDamis — submissions</li>
+          <li>World Bank, IMF, UN</li>
+          <li>HAPT — API</li>
+          <li>Old DMS — migration</li>
+          <li>OneDrive — HAQ files</li>
+          <li>GHED Explorer, GHO</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- ---- right column ---- -->
+    <div class="col-side">
+
+      <div class="mod m6">
+        <div class="hd"><b>Reports &amp; Analytics</b></div>
+        <ul>
+          <li>Report builder</li>
+          <li>Saved and shared reports</li>
+          <li>Data tracking and comparison</li>
+          <li>Labels in six WHO languages</li>
+          <li>Excel export</li>
+          <li>Background jobs</li>
+        </ul>
+      </div>
+
+      <div class="mod m7">
+        <div class="hd"><b>Quality Checks</b></div>
+        <ul>
+          <li>Rule library, eight categories</li>
+          <li>Configurable thresholds</li>
+          <li>Country exclusions</li>
+          <li>Run from workbook or reports</li>
+          <li>Findings beside the grid</li>
+          <li>Shared and private rules</li>
+        </ul>
+      </div>
+
+      <div class="mod m8">
+        <div class="hd"><b>Versioning</b></div>
+        <ul>
+          <li>Up to ten versions retained</li>
+          <li>View and compare versions</li>
+          <li>Restore a selected version</li>
+          <li>Dataset restore as at a date</li>
+          <li>Author and timestamp kept</li>
+        </ul>
+      </div>
+
+      <div class="mod m9">
+        <div class="hd"><b>Notifications</b></div>
+        <ul>
+          <li>Event-driven in-app notices</li>
+          <li>Country and variable choices</li>
+          <li>Subscriptions to data changes</li>
+          <li>Due-date reminders</li>
+          <li>Configurable event catalogue</li>
+        </ul>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ bottom: staff users ============ -->
+<div class="staff">
+  <div class="disc">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="#1E7C9E">
+      <circle cx="9" cy="8" r="3.3"/>
+      <path d="M9 12.6c-3.2 0-5.8 1.9-5.8 4.2v1.4h11.6v-1.4c0-2.3-2.6-4.2-5.8-4.2z"/>
+      <circle cx="16.6" cy="9.2" r="2.5" opacity=".75"/>
+      <path d="M16.6 13c-1.1 0-2.1.2-2.9.6 1.2.9 2 2.2 2 3.6v1h5.1v-1.2c0-2.2-1.9-4-4.2-4z" opacity=".75"/>
+    </svg>
+  </div>
+  <b>Staff users</b>
+</div>
+
+</body></html>
