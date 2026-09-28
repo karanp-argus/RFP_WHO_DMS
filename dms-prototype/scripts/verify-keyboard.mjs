@@ -26,7 +26,7 @@
  *     npm run verify:keyboard
  */
 
-import { chromium } from 'playwright'
+import { launchChromium } from './lib/browser.mjs'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -39,7 +39,7 @@ const BASE = process.env.DMS_URL ?? 'http://localhost:5199'
 const FOCUS = `${BASE}/workbooks/view?c=CAN&v=HF.1,HF.1.1,HF.1.2,HF.3,HF.3.1&y=2018-2022&type=country`
 
 const errors = []
-const browser = await chromium.launch()
+const browser = await launchChromium()
 const ctx = await browser.newContext({
   viewport: { width: 1600, height: 1050 },
   permissions: ['clipboard-read', 'clipboard-write'],

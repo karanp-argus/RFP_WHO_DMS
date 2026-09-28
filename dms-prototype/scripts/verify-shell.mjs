@@ -1,4 +1,4 @@
-import { chromium } from 'playwright'
+import { launchChromium } from './lib/browser.mjs'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -8,7 +8,7 @@ fs.mkdirSync(OUT, { recursive: true })
 const BASE = process.env.DMS_URL ?? 'http://localhost:5199'
 
 const errors = []
-const browser = await chromium.launch()
+const browser = await launchChromium()
 
 async function newPage(w, h) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h } })

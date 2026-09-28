@@ -75,7 +75,9 @@ documentation sweep:
   `npm run verify:*` fails at launch. Build 1243 works when given explicitly as
   `executablePath`; run that way, `verify:workbook` 34/34, `verify:qc` 49/49 and
   `verify:phase7` 92/92 pass with no console errors, covering Save, the scatter and dataset
-  restore. `npx playwright install chromium` removes the need for the override.
+  restore. **Superseded the same day:** every script now launches through
+  `scripts/lib/browser.mjs`, which falls back to installed Chrome or Edge when the bundled build is
+  missing — see §3.
 
 **Use-case coverage.** All **64** RFP rows are accounted for: **40 of the 41 Pilot use cases are
 demonstrable in the application** (35 fully, 5 with a stated limit — UC006, 028, 045, 046, 056),
@@ -99,7 +101,7 @@ the Pilot flags from the .docx the way Phase 8 did.
 ```bash
 cd dms-prototype
 npm ci                              # or npm install
-npx playwright install chromium     # one-off, only for the verify:* scripts
+npx playwright install chromium     # recommended, not required — see "Browser verification"
 npm run dev                         # http://localhost:5173
 ```
 
@@ -146,6 +148,12 @@ the scheme blocks ES modules and has no path rewrite.
 
 These are diagnostic harnesses, not CI gates. **Start `npm run dev -- --port 5199` first**,
 then in another terminal:
+
+Each one prints a `browser:` line first. Playwright's own bundled build is used when installed;
+otherwise `scripts/lib/browser.mjs` falls back to Google Chrome, then Microsoft Edge, then the
+newest Chromium in the Playwright cache, and says which. `DMS_CHROMIUM_PATH=<executable>` forces a
+specific browser. If a check fails oddly under a fallback, run `npx playwright install chromium`
+and try again before debugging the app.
 
 ```bash
 npm run verify:theme    # both themes, resolved token values, shadcn aliases, toggle persistence

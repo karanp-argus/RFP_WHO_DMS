@@ -11,17 +11,15 @@
  *
  *   node docs/diagrams/render.mjs
  */
-import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync, statSync } from 'node:fs';
+// Playwright is a devDependency of dms-prototype, not of docs/. The shared launcher lives
+// there and resolves it from there, so this script runs from any working directory, and
+// it falls back to an installed Chrome/Edge when the bundled build is missing.
+import { launchChromium } from '../../dms-prototype/scripts/lib/browser.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-
-// Playwright is a devDependency of dms-prototype, not of docs/. Resolve it from there
-// explicitly so this script runs from any working directory.
-const require = createRequire(join(here, '..', '..', 'dms-prototype', 'package.json'));
-const { chromium } = require('playwright');
 const outDir = join(here, '..', 'assets');
 mkdirSync(outDir, { recursive: true });
 
@@ -41,7 +39,7 @@ const CANVAS = {
   'figure4-app-architecture': 1500,
 };
 
-const browser = await chromium.launch();
+const browser = await launchChromium();
 const page = await browser.newPage({
   viewport: { width: 1300, height: 1200 },
   deviceScaleFactor: 2,

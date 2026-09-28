@@ -103,7 +103,10 @@ regressions during Phase 8 happened.
 
 ### Browser harnesses
 
-Diagnostic, not CI gates. Start a server first:
+Diagnostic, not CI gates. They need a Chromium: Playwright's bundled build if you have run
+`npx playwright install chromium`, otherwise an installed Google Chrome or Microsoft Edge, which
+`scripts/lib/browser.mjs` finds on its own and names in its first line of output. Start a server
+first:
 
 ```bash
 npm run dev -- --port 5199

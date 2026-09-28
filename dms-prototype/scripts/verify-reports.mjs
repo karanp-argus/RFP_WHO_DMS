@@ -15,7 +15,7 @@
  * nothing would otherwise pass a visual check.
  */
 
-import { chromium } from 'playwright'
+import { launchChromium } from './lib/browser.mjs'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -39,7 +39,7 @@ const check = (label, ok, detail = '') => {
   }
 }
 
-const browser = await chromium.launch()
+const browser = await launchChromium()
 const ctx = await browser.newContext({
   viewport: { width: 1680, height: 1150 },
   acceptDownloads: true,

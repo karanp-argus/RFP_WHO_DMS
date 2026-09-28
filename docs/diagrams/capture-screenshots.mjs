@@ -10,14 +10,13 @@
  * Each shot is independent and failures are reported rather than thrown, so one broken
  * selector does not cost the whole run. Re-run after fixing and only the failures change.
  */
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { mkdirSync, statSync } from 'node:fs';
+// Resolves Playwright from dms-prototype and falls back to an installed Chrome/Edge.
+import { launchChromium } from '../../dms-prototype/scripts/lib/browser.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const require = createRequire(join(here, '..', '..', 'dms-prototype', 'package.json'));
-const { chromium } = require('playwright');
 
 const BASE = process.env.DMS_URL ?? 'https://whohadms.argusservices.in';
 const outDir = join(here, '..', 'assets', 'screenshots');
@@ -25,7 +24,7 @@ mkdirSync(outDir, { recursive: true });
 
 // 1600x1000 at deviceScaleFactor 2 gives a 3200px wide image. Placed 6.5in wide in the
 // proposal that is ~490 DPI, so the interface stays crisp when the page is zoomed.
-const browser = await chromium.launch();
+const browser = await launchChromium();
 const context = await browser.newContext({
   viewport: { width: 1600, height: 1000 },
   deviceScaleFactor: 2,

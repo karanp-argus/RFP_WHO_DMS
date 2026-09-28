@@ -419,6 +419,11 @@ The highlights:
   release — the range is 7.12.0–8.2.0 and 7.18.2 is `latest`. It is unreachable here: no
   server, no RSC, no actions. **Do not run `npm audit fix --force`** — it downgrades to
   7.11.0, a semver-major break that also triggers ERESOLVE peer conflicts against React 19.
+- **Scripts launch the browser through `scripts/lib/browser.mjs`, never `chromium.launch()`.**
+  Playwright accepts only the Chromium build it bundles, so a cache holding any other build
+  fails at launch even with Chrome installed. The launcher falls back to Chrome, then Edge, then
+  the newest cached build, and prints which one it used. A new harness or renderer that calls
+  `chromium.launch()` directly reintroduces the failure on every machine without the exact build.
 - No `baseUrl` in tsconfig (TypeScript 6 deprecates it); `paths` alone resolves `@/*`. The
   alias is mirrored in the root `tsconfig.json` because the shadcn CLI reads it from there.
 

@@ -24,7 +24,7 @@
  *                               DMS_URL=http://localhost:4173 npm run verify:responsive
  */
 
-import { chromium } from 'playwright'
+import { launchChromium } from './lib/browser.mjs'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -112,7 +112,7 @@ const OVERFLOW_PROBE = `
 })()
 `
 
-const browser = await chromium.launch()
+const browser = await launchChromium()
 
 for (const theme of ['light', 'dark']) {
   for (const width of WIDTHS) {
