@@ -3,8 +3,8 @@
 **Develop a Data Management System (DMS) for Health Accounts**
 Argusoft India Ltd.
 
-This document answers the six clarification queries received after submission of our technical
-proposal. Where an answer rests on a measurement, the measurement was taken on our working
+This document answers the clarification queries received after submission of our technical
+proposal: six technical queries (§1–§6) and eight commercial and contractual queries (§7–§14). Where an answer rests on a measurement, the measurement was taken on our working
 prototype, which remains available for evaluation at **https://whohadms.argusservices.in/**, and
 the conditions of the measurement are stated alongside it. Where an answer describes the design of
 the delivered system rather than something the prototype already does, we say so.
@@ -17,10 +17,18 @@ the delivered system rather than something the prototype already does, we say so
 |---|---|---|
 | 1 | Workbook grid component | **react-datasheet-grid** (MIT licence), the component our prototype's Workbook already runs on. Alternatives such as AG Grid are available if WHO prefers them, with the licensing implications set out in §1.4. |
 | 2 | Formula engine | A purpose-built engine: tokenizer, parser, syntax tree, dependency graph with topological evaluation, and explicit handling of missing values. Cycles are refused when a formula is saved and named in full. Worked examples from the prototype are in §2.6. |
-| 3 | Performance at realistic volumes | Tested at the largest shapes the Functional Requirements allow, up to 194 countries × all variables for one year (34,532 cells). Rendering and recalculation stay under 0.2 s once data is retrieved. Target end-to-end response times are in §3.4. |
+| 3 | Performance at realistic volumes | Rendering verified at the largest shapes the Functional Requirements allow, up to 194 countries × all variables for one year (34,532 cells): under 0.2 s once the data is in the browser. End-to-end performance cannot be tested on a prototype with synthetic data. Targets will be agreed with WHO and tested against xMart (§3.3). |
 | 4 | Multiple crosses | A cross is one observation carrying values in two or more classifications. We analysed the cross tables in Annex 3 and the HAPT workbook, including how crosses reconcile with each other, and describe the model, display and checks in §4. |
 | 5 | Large-volume operations | Heavy work runs on a separate background worker tier, partitioned by country, reading a consistent snapshot, throttled towards xMart, with no locks on data users are editing. Details in §5. |
 | 6 | Scope coverage | Confirmed. The 396 person-days over seven months cover the scope of the Functional Requirements, with the single exception of UC003.1 (§6). |
+| 7 | Database technology | Microsoft SQL Server, delivered as the Azure SQL Database PaaS service. We are open to another database if WHO prefers. |
+| 8 | Licensing costs | No annual licence fees. The SQL Server licence is included in the Azure SQL Database service charge, and all other components are open source. |
+| 9 | Effort beyond the estimate | Up to 20% scope adjustment is included in the proposed cost, and within it any additional effort is borne by Argusoft. Beyond that threshold, additional effort is agreed with WHO as a change request. |
+| 10 | Team availability | Confirmed. All proposed Key Experts remain assigned for the full duration of the project. |
+| 11 | Support and maintenance pricing | Confirmed. USD 50,000 for five years, approximately USD 833 per month, fixed for the whole period. |
+| 12 | Support scope | Corrective maintenance, monitoring, security patching, backup verification, integration support, help desk and reporting, detailed in §12. |
+| 13 | Azure hosting cost | Approximately USD 702 per month, or USD 8,425 per year, for the production environment in West Europe. |
+| 14 | Source code ownership | Confirmed. All source code, including core components and reusable modules, and any commercial licences transfer to WHO and become WHO's property. |
 
 ---
 
@@ -33,7 +41,7 @@ the delivered system rather than something the prototype already does, we say so
 We will use **react-datasheet-grid** (MIT licence) for the Workbooks module.
 
 This is not a paper choice. The Workbook in our prototype is built on it, and it already carries
-the behaviours the Functional Requirements ask for, working together on real data volumes (§3).
+the behaviours the Functional Requirements ask for, working together at full-scale data volumes (§3).
 
 ### 1.2 How it meets the Workbook requirements
 
@@ -44,7 +52,7 @@ the behaviours the Functional Requirements ask for, working together on real dat
 | Undo similar to Excel | A multi-level command stack in our application layer covers edits, pastes, fills and bulk status changes as single undoable steps |
 | Formula cells shown in a different colour and in italic | Custom cell renderers: reported values, calculated indicators and formula cells are visually distinct, as are metadata, publishing-status and quality-check markers |
 | Years across, variables down, headers visible while scrolling | Frozen year header row, frozen variable label and code column, and a frozen corner cell |
-| Large selections without paging | Rows and columns are both virtualised. In our measurements a 34,532-cell workbook keeps about 405 cells in the page at any moment (§3.3) |
+| Large selections without paging | Rows and columns are both virtualised. In our measurements a 34,532-cell workbook keeps about 405 cells in the page at any moment (§3.2) |
 | Keyboard operation | Arrow keys, Tab, Enter and Escape are native. Undo, redo, copy and paste shortcuts are handled so that they never interfere with typing in other fields |
 
 ### 1.3 Why this component, and the risk we are managing
@@ -293,62 +301,49 @@ on `CHE`.
 > (e.g., multiple countries × variables × years displayed simultaneously), and indicate the expected
 > response time when visualising large datasets.*
 
-### 3.1 The shapes the Workbook must handle
+### 3.1 What we verified
 
-UC031 defines a workbook as a two-dimensional view in which one of the three axes holds a single
-value:
+We verified the **rendering performance** of the prototype's Workbook at realistic Health Accounts
+volumes. That is how quickly the grid displays a workbook once its data is in the browser,
+including evaluating every formula in view, and how smoothly it scrolls.
 
-| Workbook | Shape | Size at full scale |
-|---|---|---|
-| Country workbook | 1 country × all variables × 25 years | about 4,500 cells |
-| Variable workbook | 1 variable × 194 countries × 25 years | 4,850 cells |
-| Year workbook | 1 year × 194 countries × all variables | about 35,000 cells, **the largest** |
+The prototype is not connected to xMart and runs on synthetic (dummy) data generated in the
+browser. The **actual end-to-end performance** of the delivered system, which includes retrieval
+from xMart, the DMS API, the network and the hosting environment, therefore cannot be tested on the
+prototype. The figures below describe rendering only and should not be read as end-to-end response
+times.
 
-Views across all three axes at once, many countries by many variables by many years, are served by
-the **Reports** module's pivot builder. It runs on the server, and in the background when the volume
-is large (UC042). The Workbook therefore needs to handle up to about 35,000 editable cells with
-formulas live; the tens of millions of rows in UC057 are a retrieval and processing concern,
-covered in §5.
-
-### 3.2 Confirmation: what we tested
-
-Yes. We tested the prototype's Workbook at the full-scale version of every shape above, plus a
-workbook of crosses. The tests used:
+The rendering tests used:
 
 - the **production build** of the prototype, served locally;
 - **Google Chrome 151** under automated control;
 - a laptop with an Intel Core i5-1335U and 32 GB RAM, at 1920 × 1080;
-- all **194 WHO Member States**, the **161 seeded classification variables** plus the **16 HLR8
-  indicators**, and **25 years (2000–2024)**.
+- synthetic data for all **194 WHO Member States**, **161 classification variables** plus the
+  **16 HLR8 indicators**, and **25 years (2000–2024)**.
 
 Each figure is the median of three runs.
 
-We report two times because they measure different things:
+### 3.2 Rendering results
 
-- **Grid and engine** is the time to render the workbook once its data is in the browser: laying
-  out the grid, evaluating every formula in view and painting the first screen. This is the part of
-  the response time that is ours regardless of infrastructure.
-- **Cold open** is the full time from navigation to a usable grid, including retrieval. In the
-  prototype, "retrieval" means the mock data service generating the whole requested dataset inside
-  the browser. For 194 countries that is about 580,000 observations, which takes about 4.4 s on its
-  own. In the delivered system that work happens on the server, and only the slice the screen needs
-  is returned (§3.4).
+UC031 defines a workbook as a two-dimensional view in which one of the three axes holds a single
+value. We rendered the full-scale version of each workbook shape, plus a workbook of crosses:
 
-### 3.3 Measured results
+| Workbook | Cells | Cells in the page | Render time | Scroll frame time, p50 / p95 |
+|---|---|---|---|---|
+| Country: Canada × all variables × 25 years | 4,450 | 405 | **70 ms** | 23 / 37 ms |
+| Variable: CHE%GDP × 194 countries × 25 years | 4,850 | 405 | **169 ms** | 21 / 39 ms |
+| Variable: HF.1.1 × 194 countries × 25 years | 4,850 | 405 | **67 ms** | 23 / 45 ms |
+| Year: 2022 × 194 countries × all variables | **34,532** | 405 | **121 ms** | 37 / 56 ms |
+| Crosses: Canada × 15 crosses × 25 years | 375 | 240 | **41 ms** | 17 / 21 ms |
 
-| Workbook | Logical cells | Cells in the page | Grid and engine | Cold open (prototype) | Scroll frame time, p50 / p95 |
-|---|---|---|---|---|---|
-| Country: Canada × all variables × 25 years | 4,450 | 405 | **70 ms** | 0.7 s | 23 / 37 ms |
-| Variable: CHE%GDP × 194 countries × 25 years | 4,850 | 405 | **169 ms** | 4.8 s | 21 / 39 ms |
-| Variable: HF.1.1 × 194 countries × 25 years | 4,850 | 405 | **67 ms** | 4.6 s | 23 / 45 ms |
-| Year: 2022 × 194 countries × all variables | **34,532** | 405 | **121 ms** | 4.7 s | 37 / 56 ms |
-| Crosses: Canada × 15 crosses × 25 years | 375 | 240 | **41 ms** | 0.6 s | 17 / 21 ms |
+**Render time** is the time to lay out the grid, evaluate every formula in view and paint the first
+screen, with the data already in the browser. It excludes data retrieval.
 
 What the table shows:
 
 - **Rendering cost does not grow with the size of the workbook.** Whether the workbook holds 4,450
   cells or 34,532, about 405 are in the page at any moment, because rows and columns are both
-  virtualised. Rendering time stays between 41 and 169 ms.
+  virtualised. Render time stays between 41 and 169 ms.
 - **Formulas stay live at full scale.** The CHE%GDP workbook evaluates the indicator, and
   everything it depends on, for 194 countries × 25 years inside the 169 ms.
 - **Scrolling holds up under a stress test.** The scroll figures come from a deliberately harsh
@@ -357,37 +352,26 @@ What the table shows:
   smoother.
 - **No errors** were recorded in any run.
 
-**Editing.** After an edit, dependent indicators update visibly in **0.2–0.4 s** in a one-country
-workbook. In a workbook spanning all 194 countries the prototype takes **3.4–3.9 s**. The
-recalculation itself takes about **1 ms** per country (§2.5). The rest is the prototype writing each
-edit through its mock data service and reading the whole selection back.
+Views across all three axes at once, many countries by many variables by many years, are served by
+the **Reports** module's pivot builder rather than the Workbook. It runs on the server, and in the
+background when the volume is large (UC042, §5).
 
-That round trip is a simplification of the prototype, not of the design. In the delivered system,
-edits are held in the browser until the user saves, and the engine recalculates the dependents
-directly. Dependent cells then update within one frame whatever the size of the selection, and
-data travels to xMart once, on Save (UC046). The measurement is the reason this is written into the
-design.
+### 3.3 End-to-end response times in the delivered system
 
-### 3.4 Expected response times in the delivered system
+The response time a user experiences is the time to retrieve the workbook's data from xMart through
+the DMS API, plus the rendering time above. Retrieval depends on xMart, the network and the hosting
+environment, so it can only be measured against the real system. We will therefore:
 
-The targets below are **95th-percentile, end-to-end** response times for a user on the WHO network.
-We will adopt them as acceptance criteria for performance testing. They assume xMart answers a
-filtered request for one workbook's data (up to about 60,000 rows, including the inputs its formulas
-need) within 1 s. That figure will be measured with the xMart team during discovery, and the targets
-adjusted transparently if it differs.
+1. **Measure retrieval with the xMart team during discovery**, for a filtered request returning one
+   workbook's data, including the inputs its formulas need.
+2. **Agree 95th-percentile response-time targets with WHO** for each workbook shape on that basis,
+   and adopt them as acceptance criteria.
+3. **Test against those targets during development**, against xMart in UAT with realistic volumes:
+   browser timings with Playwright and load with k6. The load tests include the Proposal's planning
+   figure of about twenty concurrent users working while a full quality-check run is in progress
+   (§5).
 
-| Operation | Target (p95) | Basis |
-|---|---|---|
-| Open a country workbook (≈ 4,500 cells) | **≤ 1.5 s** | Grid and engine measured at 70 ms |
-| Open a variable workbook (194 countries × 25 years) | **≤ 2.5 s** | Grid and engine measured at 67–169 ms. Retrieval includes the formula inputs for 194 countries |
-| Open a year workbook (194 countries × all variables, ≈ 35,000 cells) | **≤ 3 s** | Grid and engine measured at 121 ms |
-| Open the cross tables for one country and year (≈ 3,400 cross observations, Annex 3) | **≤ 2 s** | Comparable in size to a country workbook |
-| Recalculate dependents after an edit | **≤ 100 ms** | Engine measured at 1.1 ms per country |
-| Scroll across a workbook of any size | Sustained **≥ 30 frames per second** | Measured p95 frame time 21–56 ms under the stress test |
-| Save to xMart | Progress shown immediately; completion depends on xMart | Asynchronous, with outcome and any rejected rows reported |
-| Very large reports and full quality-check runs | Background jobs with notification | Not interactive by design (UC042, §5) |
-
-How the design delivers these:
+The design keeps retrieval as short as possible:
 
 - **Retrieve only what the screen needs.** A workbook requests its own countries, years and
   variables, plus the inputs its formulas depend on, with filtering and paging done on the server.
@@ -395,11 +379,7 @@ How the design delivers these:
   and formulas change rarely. They are cached (Redis is our recommendation) and cleared
   automatically when edited in Setup.
 - **Keep the browser's work bounded.** The grid is virtualised, recalculation is targeted, and
-  modules are loaded on demand. The prototype's first screen downloads 226 kB (gzipped).
-- **Verify with realistic data.** Performance tests run during development against xMart in UAT,
-  using realistic volumes: browser timings with Playwright and load with k6. The load tests include
-  the Proposal's planning figure of about twenty concurrent users working while a full
-  quality-check run is in progress (§5).
+  modules are loaded on demand.
 
 ---
 
@@ -518,7 +498,7 @@ where the two readings would differ, the composite-member check above flags it.
 |---|---|
 | Crosses stored as multi-classification observations with no separate entity | Demonstrated. The long format is round-tripped column for column |
 | Predefined and custom crosses, with a builder for two or more classifications | Demonstrated in **Setup → Crosses** (`/setup?tab=crosses`). The builder derives the notation, e.g. `HC.1xHF.1`, as dimensions are picked |
-| Several crosses in one workbook across 25 years | Demonstrated. Measured at 0.6 s to open (§3.3) |
+| Several crosses in one workbook across 25 years | Demonstrated. Renders in 41 ms (§3.2) |
 | Reconciliation between classifications (HF total vs HC total, HF total vs FS total) | Demonstrated as delivered quality checks |
 | Cross-table view, checks on totals shared between cross tables, formulas that reference crosses | Part of the delivered system, as designed above. Not yet built in the prototype, whose seeded data holds individual crosses rather than complete cross tables |
 
@@ -600,7 +580,7 @@ receives its data and returns findings. It has a check budget that reports trunc
 hiding it, and it already takes its scope as a list of countries, which is the unit of partitioning
 in §5.2.
 
-**Measured on the prototype** (one thread, same laptop as §3.2): all 18 delivered and seeded rules
+**Measured on the prototype** (one thread, same laptop as §3.1): all 18 delivered and seeded rules
 over all 194 countries and 25 years performed **723,415 value checks on 225,155 observations in
 0.79 s**, about 900,000 checks per second, and returned 3,848 findings.
 
@@ -612,7 +592,7 @@ figures from the performance tests.
 
 **Verified in testing.** Our performance test plan includes this exact scenario: a full
 quality-check run over production-scale data, with simulated users working in workbooks at the
-same time. The acceptance criterion is that the interactive response times in §3.4 are still met
+same time. The acceptance criterion is that the agreed interactive response times (§3.3) are still met
 while the run is in progress.
 
 ---
@@ -635,3 +615,158 @@ and the migration of legacy data and formulas. The single exception is the use c
 The seven months correspond to the Terms of Reference milestones from contract signature to
 production deployment, training and handover of source code. The three-month warranty period
 follows within the overall ten-month contract period.
+
+---
+
+## 7. Database technology
+
+> *Confirm which database technology will be used for the DMS and whether it bears any annual
+> licence cost.*
+
+We recommend **Microsoft SQL Server**, delivered as the **Azure SQL Database** PaaS service. In our
+experience across several WHO projects, including the JEE Reporting Platform, eNAPHS and eSPAR, SQL
+Server is the database WHO already uses and supports. The legacy DMS also runs on SQL Server, which
+simplifies the migration of its data and formulas.
+
+We are nevertheless open to a different database technology if WHO prefers one for this
+assignment.
+
+Azure SQL Database does not carry a separate annual licence fee (§8).
+
+---
+
+## 8. Licensing costs
+
+> *Indicate whether any component of the proposed solution bears any annual licensing fee.*
+
+No component of the proposed solution carries an annual licence fee.
+
+- **Database.** With Azure SQL Database as a PaaS service, the SQL Server licence is included in
+  the service charge, so no separate licence is purchased or renewed. The service charge itself is
+  part of the hosting cost in §13.
+- **Application components.** All libraries and frameworks in the proposed solution are open
+  source under permissive licences, including the Workbook grid, react-datasheet-grid (MIT, §1).
+  None charges a fee.
+- **The one exception would be WHO's choice.** If WHO preferred a commercial alternative to one of
+  our recommended components, such as AG Grid Enterprise for the Workbook grid (§1.4), that
+  component would carry its vendor's licence fee. We would confirm any such cost with WHO before
+  adopting it.
+
+---
+
+## 9. Effort beyond the estimate
+
+> *If the actual effort exceeds your estimate, please clarify who will bear the additional cost.*
+
+Our estimate is based on the Terms of Reference, the Functional Requirements and our understanding
+of the expected system. During the requirements finalisation phase we will confirm the detailed
+requirements with WHO, make any necessary amendments to the proposed solution and agree the final
+effort. We consider the likelihood of a material difference from our estimate to be low.
+
+As stated in our technical proposal, the proposed cost already includes:
+
+- **up to 20% scope adjustment** during development and warranty, planned and prioritised by the
+  WHO working group; and
+- any individual modification that one resource can complete within **10 working days**.
+
+Within the agreed scope and this threshold, any additional effort is borne by Argusoft. If the
+requirements confirmed during finalisation, or later change requests, take the effort beyond this
+threshold, the additional effort will be assessed jointly with WHO and borne by WHO through an
+agreed change request.
+
+---
+
+## 10. Team availability
+
+> *Please confirm that all key experts proposed in your submission will remain assigned and
+> available for the full duration of the project.*
+
+Yes. We confirm that all Key Experts proposed in our submission will remain assigned to the project
+and available for its full duration.
+
+---
+
+## 11. Support and maintenance pricing
+
+> *Your technical proposal states that post-warranty support is a separate assignment, while your
+> financial proposal includes 5 years of support at USD 50,000 total. If the financial form is
+> correct, please confirm that the monthly cost of approximately USD 833 will remain fixed for the
+> entire 5-year period.*
+
+Yes. The financial form is correct. Post-warranty support and maintenance for five years is offered
+at **USD 50,000** in total, approximately **USD 833 per month**, and this monthly cost will remain
+fixed for the entire five-year period.
+
+---
+
+## 12. Support scope breakdown
+
+> *Please provide a breakdown of activities included in the 5-year support and maintenance
+> package.*
+
+The five-year package begins when the three-month warranty ends. It keeps the delivered DMS
+running, secure and correct in production. It continues the operating model established during
+the warranty, as described in the Support, Maintenance and Warranty Services section of our
+technical proposal.
+
+| Area | Activities included |
+|---|---|
+| Corrective maintenance | Diagnosis and fixing of production defects in all DMS modules, including workbooks, formulas, quality checks, reports and notifications. Every fix is tested and released through the controlled release process, with rollback planned |
+| Monitoring and uptime | 24×7 automated monitoring and alerts for application and API availability, error rates, failed or delayed background jobs, database availability and capacity, and certificate expiry. Alerts and reported errors are investigated within the support window |
+| Server and platform auditing | Regular review of server and database health, capacity, performance, logs and configuration, with recommendations when usage grows |
+| Security maintenance | Regular security checks and vulnerability scanning of the application, its dependencies and the hosting configuration. Security patches for known vulnerabilities are applied to the application runtime, frameworks and third-party libraries, after impact assessment and testing, through WHO-approved change procedures |
+| xMart integration support | Diagnosis of failures in the bidirectional DMS–xMart integration and of reconciliation issues, in coordination with the WHO xMart team |
+| Backup and recovery | Monitoring of backup jobs, periodic restoration tests, and restoration of service after an operational failure using the agreed runbooks |
+| Year-end support | Closer monitoring during the year-end quality-check run over all countries, including failed-job restart and retry and prompt diagnosis of any issue |
+| Help desk | Incidents and requests reported through an agreed email or ticketing channel during an 8×5 support window overlapping WHO Geneva business hours, with severity-based response targets (initial response within one business hour for Critical incidents, four business hours for High, one business day for Medium and two business days for Low) |
+| Reporting and governance | A monthly support report covering incidents, fixes, security patches, monitoring results, backup status and recommended actions, with periodic review meetings with WHO |
+
+**Not included.** New functionality and enhancements beyond corrective maintenance, which would be
+agreed with WHO as separate change requests. Azure hosting charges, which are consumption costs
+paid for WHO's subscription (§13). Changes to the xMart platform and to WHO tenant administration,
+which remain with the relevant WHO teams.
+
+Final severity definitions, response targets and the support window will be confirmed with WHO and
+recorded in the Support and Maintenance Plan before the package begins.
+
+---
+
+## 13. Azure hosting cost estimate
+
+> *Provide a rough annual estimate of Azure hosting costs for your proposed architecture, assuming
+> ~20 concurrent users and year-end processing of ~25 million rows.*
+
+Our estimate for the production environment, sized for the assumptions above and deployed in the
+**West Europe** Azure region, is:
+
+| Environment | Monthly (USD) | Annual (USD) |
+|---|---|---|
+| Production | approx. 702 | approx. 8,425 |
+
+The production environment comprises:
+
+- Azure App Service, Premium v2 (P3v2: 4 vCPU, 14 GB RAM);
+- Azure SQL Database Hyperscale (up to 4 vCores);
+- Blob Storage (1 TB);
+- Azure Front Door Premium;
+- Virtual Network, Key Vault and static IP addresses.
+
+A detailed breakdown by resource is available at
+https://docs.google.com/spreadsheets/d/1y-3FlPaSvJZL5pkLux3vxwUHzin782fUsadKL8Kfcbw/edit?gid=467248193#gid=467248193.
+
+---
+
+## 14. Source code ownership
+
+> *Please confirm that, upon project completion, all source codes and licenses, if any, including
+> any core components or reusable modules, will be fully transferred to WHO and become WHO's
+> property.*
+
+Yes. Upon project completion, all source code developed for the DMS, including any core components
+and reusable modules, will be fully transferred to WHO and will become WHO's property. Any
+commercial licences procured for the project will likewise be transferred to WHO.
+
+Third-party open-source libraries used in the solution remain under their own open-source licences,
+such as MIT. These licences grant WHO the right to use, modify and distribute the libraries without
+fees, and they are listed in the Third-Party Components and Licence Inventory handed over with the
+source code.
