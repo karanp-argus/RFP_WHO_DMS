@@ -159,6 +159,20 @@ export function WorkbookGrid({
     [columns],
   )
 
+  /**
+   * Remount DSG when the set of columns changes.
+   *
+   * Its column virtualiser keeps the old column count on a mounted grid: after
+   * adding years through the Year filter the grid kept painting only the
+   * original ones, even after scrolling or resizing, while DSG was being handed
+   * every new column. Nothing else changes the column set without a remount (a
+   * country change shows the loading state first), so the Year filter was the
+   * one path that exposed it. Keyed on the column ids alone, so edits, scale and
+   * findings never trigger a remount; the page already clears its retained
+   * selection whenever the selection changes.
+   */
+  const columnSetKey = useMemo(() => columns.map((c) => c.key).join('|'), [columns])
+
   const gutterColumn = useMemo<Partial<Column<DsgRow, unknown, string>>>(
     () => ({
       basis: LABEL_COLUMN_WIDTH,
@@ -227,6 +241,7 @@ export function WorkbookGrid({
     <WorkbookGridContext.Provider value={context}>
       <div className="dms-workbook-grid overflow-hidden rounded border border-who-border">
         <DataSheetGrid<DsgRow>
+          key={columnSetKey}
           ref={ref}
           value={data}
           onChange={handleChange}
