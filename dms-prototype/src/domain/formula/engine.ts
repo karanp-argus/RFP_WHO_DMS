@@ -15,7 +15,11 @@
  *     CLAUDE.md aggregates are never generated: `HF.1` is the sum of `HF.1.1`,
  *     `HF.1.2` and `HF.1.3`, computed here, which is exactly what makes the
  *     engine visible in the demo rather than a claim on a slide.
- *  3. **A reported value**, from the resolver the caller supplied.
+ *  3. **A cell formula**, if the user typed one into that reported cell
+ *     (UC031). It replaces the cell's reported value and is re-evaluated like
+ *     any other formula, so it follows its inputs instead of freezing the
+ *     number it had when it was typed.
+ *  4. **A reported value**, from the resolver the caller supplied.
  *
  * A formula whose expression names its own code — the FR lists `GGHE-D` that
  * way, because it is sourced rather than derived — resolves at level 2 or 3 on
@@ -61,6 +65,18 @@ export interface EngineOptions {
   years: readonly number[]
   /** Reported value lookup — the engine's only door to data. */
   resolveReported: (iso3: string, year: number, code: string) => number | null
+  /**
+   * UC031 — the expression (without its `=`) a user typed into the reported
+   * cell at (country, year, code), or null when the cell holds a plain value.
+   */
+  cellFormulaFor?: (iso3: string, year: number, code: string) => string | null
+}
+
+/** The reported cell a typed formula sits in. */
+export interface CellAddress {
+  iso3: string
+  year: number
+  code: string
 }
 
 export type ValueSource = 'formula' | 'aggregate' | 'reported' | 'unknown'
@@ -107,7 +123,12 @@ export interface FormulaEngine {
   astFor(code: string, iso3?: string): AstNode | null
   expressionFor(code: string, iso3?: string): string | null
   parse(expression: string): AstNode
-  validate(expression: string, options?: { code?: string }): ValidationResult
+  /**
+   * `code` checks the expression as that code's formula; `cell` checks it as a
+   * formula typed into that reported cell, including loops that run through an
+   * aggregate (`HF.1.2.1 = HF.1`, where `HF.1` sums `HF.1.2.1`).
+   */
+  validate(expression: string, options?: { code?: string; cell?: CellAddress }): ValidationResult
   evaluate(code: string, iso3: string, year: number): EvaluationResult
   /** Just the number — `evaluate(...).value` without the trace. */
   valueOf(code: string, iso3: string, year: number): number | null
@@ -188,7 +209,63 @@ export function createFormulaEngine(options: EngineOptions): FormulaEngine {
 
   /* --- resolution --------------------------------------------------------- */
 
-  const memo = new Map<string, number | null>()
+  let memo = new Map<string, number | null>()
+
+  /*
+   * Cell formulas can loop through aggregates and through each other, which the
+   * static graph cannot see: aggregates are leaves there, and cell formulas are
+   * data rather than definitions. So they are checked while resolving. `trail`
+   * is the path being resolved, `activeCells` the cell formulas currently open,
+   * and `detectedCycle` survives a formula swallowing the error on its way up.
+   */
+  const trail: string[] = []
+  const trailKeys: string[] = []
+  const activeCells = new Set<string>()
+  let detectedCycle: readonly string[] | null = null
+  let trialCell: { key: string; expression: string } | null = null
+
+  function cellFormulaAt(iso3: string, year: number, code: string): string | null {
+    const key = `${iso3}|${year}|${code}`
+    if (trialCell?.key === key) return trialCell.expression
+    return options.cellFormulaFor?.(iso3, year, code) ?? null
+  }
+
+  function resolveCellFormula(
+    expression: string,
+    key: string,
+    iso3: string,
+    year: number,
+    stack: readonly string[],
+  ): number | null {
+    if (activeCells.has(key)) {
+      const path = [...trail.slice(trailKeys.indexOf(key))]
+      detectedCycle = path
+      throw cycleError(path)
+    }
+    const parsed = parseCached(expression)
+    if (parsed instanceof FormulaError) return null
+
+    activeCells.add(key)
+    try {
+      // `all-not-null`: a user who typed `=HF.1+HF.2` and is missing HF.2
+      // should see blank, not a half-total presented as the whole.
+      return evaluateAst(parsed, {
+        year,
+        years,
+        policy: 'all-not-null',
+        resolve: (c, y) => resolveCode(c, iso3, y, stack),
+      }).value
+    } catch (e) {
+      // A loop already stored (entered before this check existed, or loaded
+      // from elsewhere) blanks this cell only. Letting it propagate would blank
+      // every parent and indicator above it too. `detectedCycle` still records
+      // it, which is how `validate` sees it.
+      if (e instanceof FormulaError && e.kind === 'cycle') return null
+      throw e
+    } finally {
+      activeCells.delete(key)
+    }
+  }
 
   function sourceOf(code: string, resolvingAsFormula: boolean): ValueSource {
     if (formulaByCode.has(code) && !resolvingAsFormula) return 'formula'
@@ -210,12 +287,32 @@ export function createFormulaEngine(options: EngineOptions): FormulaEngine {
     const cached = memo.get(memoKey)
     if (cached !== undefined) return cached
 
+    trail.push(code)
+    trailKeys.push(memoKey)
+    try {
+      return resolveUncached(code, iso3, year, stack, memoKey)
+    } finally {
+      trail.pop()
+      trailKeys.pop()
+    }
+  }
+
+  function resolveUncached(
+    code: string,
+    iso3: string,
+    year: number,
+    stack: readonly string[],
+    memoKey: string,
+  ): number | null {
     const selfReferencing = stack.includes(code)
     const formula = formulaByCode.get(code)
 
     if (formula && !selfReferencing) {
       const trace = evaluateFormula(formula, iso3, year, stack)
-      memo.set(memoKey, trace.value)
+      // A value computed from inside a loop is only valid inside it. Cached, it
+      // would blank every later reader of this formula, depending on which cell
+      // happened to render first.
+      if (trace.error?.kind !== 'cycle') memo.set(memoKey, trace.value)
       return trace.value
     }
 
@@ -233,6 +330,13 @@ export function createFormulaEngine(options: EngineOptions): FormulaEngine {
       const total = fnSum(parts)
       if (!selfReferencing) memo.set(memoKey, total)
       return total
+    }
+
+    const cellExpression = cellFormulaAt(iso3, year, code)
+    if (cellExpression != null) {
+      const value = resolveCellFormula(cellExpression, memoKey, iso3, year, stack)
+      if (!selfReferencing) memo.set(memoKey, value)
+      return value
     }
 
     const reported = resolveReported(iso3, year, code)
@@ -322,7 +426,7 @@ export function createFormulaEngine(options: EngineOptions): FormulaEngine {
       }
 
       const result = evaluateFormula(formula, iso3, year, [])
-      memo.set(`${iso3}|${year}|${code}`, result.value)
+      if (result.error?.kind !== 'cycle') memo.set(`${iso3}|${year}|${code}`, result.value)
       return {
         code,
         iso3,
@@ -371,7 +475,31 @@ export function createFormulaEngine(options: EngineOptions): FormulaEngine {
     }
   }
 
-  function validate(expression: string, opts: { code?: string } = {}): ValidationResult {
+  /**
+   * Resolve `cell` as if it held `expression`, on a scratch memo so the trial
+   * leaves no values behind, and report the loop it runs into, if any. Tried
+   * rather than traced statically because series functions read other years:
+   * `PREV(HF.1)` in HF.1.2.1 names its own parent and is still not a cycle.
+   */
+  function trialCycle(expression: string, cell: CellAddress): readonly string[] | null {
+    const savedMemo = memo
+    memo = new Map()
+    trialCell = { key: `${cell.iso3}|${cell.year}|${cell.code}`, expression }
+    detectedCycle = null
+    try {
+      resolveCode(cell.code, cell.iso3, cell.year, [])
+    } catch (e) {
+      if (!(e instanceof FormulaError)) throw e
+    } finally {
+      memo = savedMemo
+      trialCell = null
+    }
+    const found = detectedCycle
+    detectedCycle = null
+    return found
+  }
+
+  function validate(expression: string, opts: { code?: string; cell?: CellAddress } = {}): ValidationResult {
     const { ast, error } = tryParseExpression(expression, { knownCodes })
     if (!ast) {
       return { ok: false, ast: null, error, unknownCodes: [], cycle: null }
@@ -387,6 +515,9 @@ export function createFormulaEngine(options: EngineOptions): FormulaEngine {
         isBaseVariable: (c) => baseVariables.has(c) || aggregates.has(c),
       })
       cycle = cyclesInvolving(candidateGraph, opts.code)[0] ?? null
+    }
+    if (!cycle && opts.cell && unknownCodes.length === 0) {
+      cycle = trialCycle(expression, opts.cell)
     }
 
     return {

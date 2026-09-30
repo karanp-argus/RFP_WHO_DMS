@@ -77,6 +77,7 @@ export { aggregatesFromVariables, baseVariableCodes, isTotalCode } from './varia
 
 export {
   createFormulaEngine,
+  type CellAddress,
   type EngineFormula,
   type EngineOptions,
   type EvaluationResult,

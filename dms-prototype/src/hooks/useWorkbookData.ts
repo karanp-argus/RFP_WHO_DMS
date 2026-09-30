@@ -52,9 +52,11 @@ interface ObservationIndex {
   byKey: ReadonlyMap<string, Observation>
   /** Values only, keyed `iso3|year|code` — what the engine resolves through. */
   reported: ReadonlyMap<string, number | null>
+  /** UC031 — expressions typed into reported cells, `=` stripped, same keys. */
+  cellFormulas: ReadonlyMap<string, string>
 }
 
-const EMPTY_INDEX: ObservationIndex = { byKey: new Map(), reported: new Map() }
+const EMPTY_INDEX: ObservationIndex = { byKey: new Map(), reported: new Map(), cellFormulas: new Map() }
 
 function useObservationIndex(iso3s: readonly string[]) {
   // Sorted so two selections with the same countries in a different order share
@@ -76,6 +78,7 @@ function useObservationIndex(iso3s: readonly string[]) {
 
       const byKey = new Map<string, Observation>()
       const reported = new Map<string, number | null>()
+      const cellFormulas = new Map<string, string>()
 
       for (const o of page.rows) {
         byKey.set(observationKey(o.iso3, o.year, o.dims), o)
@@ -83,9 +86,12 @@ function useObservationIndex(iso3s: readonly string[]) {
         // Crosses are multi-dimension tuples and never formula inputs.
         if (codes.length !== 1) continue
         const code = codes[0]
-        if (code != null) reported.set(`${o.iso3}|${o.year}|${code}`, o.value)
+        if (code == null) continue
+        reported.set(`${o.iso3}|${o.year}|${code}`, o.value)
+        const expression = o.formula?.trim().replace(/^=/, '').trim()
+        if (expression) cellFormulas.set(`${o.iso3}|${o.year}|${code}`, expression)
       }
-      return { byKey, reported }
+      return { byKey, reported, cellFormulas }
     },
   })
 }
@@ -100,11 +106,15 @@ export interface WorkbookCell {
   /** The stored record. Absent where the country reports nothing at all. */
   observation: Observation | null
   /**
-   * What the cell shows. For a calculated row this is the engine's result; for
-   * a reported row it is the observation's value, edit included.
+   * What the cell shows. For a calculated row, or a reported cell holding a
+   * typed formula, this is the engine's result; otherwise it is the
+   * observation's value, edit included.
    */
   value: number | null
-  /** UC031: a formula cell "displays the terms of the formula". */
+  /**
+   * UC031: the terms of the formula. The formula bar and the cell editor show
+   * it; the grid shows `value`, in the formula colour.
+   */
   formula: string | undefined
   /** Parents, totals and indicators — read-only, and pink per the legacy rows. */
   isCalculated: boolean
@@ -164,6 +174,7 @@ export function useWorkbookData(
       baseVariables: baseVariableCodes(variables),
       years: YEARS,
       resolveReported: (iso3, year, code) => index.reported.get(`${iso3}|${year}|${code}`) ?? null,
+      cellFormulaFor: (iso3, year, code) => index.cellFormulas.get(`${iso3}|${year}|${code}`) ?? null,
     })
     // `dirtyKeys` is a dependency on purpose: an edit changes what the engine
     // should compute, and rebuilding it is how the memo gets dropped.
@@ -196,9 +207,13 @@ export function useWorkbookData(
       const observation = data.byKey.get(key) ?? null
       const isCalculated = variable?.isCalculated ?? engine?.expressionFor(coordinate.code) != null
 
-      const value = isCalculated
-        ? (engine?.valueOf(coordinate.code, coordinate.iso3, coordinate.year) ?? null)
-        : (observation?.value ?? null)
+      // A typed formula is evaluated live rather than trusted from the value
+      // stored when it was entered, so it follows its inputs as they change.
+      const hasCellFormula = data.cellFormulas.has(`${coordinate.iso3}|${coordinate.year}|${coordinate.code}`)
+      const value =
+        isCalculated || hasCellFormula
+          ? (engine?.valueOf(coordinate.code, coordinate.iso3, coordinate.year) ?? null)
+          : (observation?.value ?? null)
 
       return {
         coordinate,

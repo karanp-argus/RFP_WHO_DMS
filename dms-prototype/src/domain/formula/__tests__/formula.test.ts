@@ -644,3 +644,107 @@ describe('evaluation', () => {
     expect(engine.cycles).toEqual([])
   })
 })
+
+/* ==========================================================================
+   Cell formulas — a formula typed into a reported cell (UC031)
+   ========================================================================== */
+
+describe('cell formulas', () => {
+  /** An engine over the test world with formulas typed into some cells. */
+  function withCells(
+    cells: Record<string, string>,
+    resolve: (iso3: string, year: number, code: string) => number | null = reported,
+  ) {
+    return createFormulaEngine({
+      formulas: FORMULAS,
+      aggregates: AGGREGATES,
+      baseVariables: BASE_VARIABLES,
+      years: YEARS,
+      resolveReported: resolve,
+      cellFormulaFor: (iso3, year, code) => cells[`${iso3}|${year}|${code}`] ?? null,
+    })
+  }
+  const at = (code: string, year = 2022) => ({ iso3: 'AAA', year, code })
+
+  it('replaces the reported value of that cell only, and feeds its parents', () => {
+    const engine = withCells({ 'AAA|2022|HF.1.2': 'HF.1.1 * 2' })
+    expect(engine.valueOf('HF.1.2', 'AAA', 2022)).toBe(280)
+    expect(engine.valueOf('HF.1', 'AAA', 2022)).toBe(420)
+    expect(engine.valueOf('CHE', 'AAA', 2022)).toBe(521)
+    // The same variable in another year keeps its reported value.
+    expect(engine.valueOf('HF.1.2', 'AAA', 2021)).toBe(65)
+  })
+
+  it('follows its inputs rather than freezing the value it had when typed', () => {
+    let hf11 = 140
+    const engine = withCells({ 'AAA|2022|HF.1.2': 'HF.1.1 * 2' }, (iso3, year, code) =>
+      code === 'HF.1.1' && year === 2022 ? hf11 : reported(iso3, year, code),
+    )
+    expect(engine.valueOf('HF.1.2', 'AAA', 2022)).toBe(280)
+    hf11 = 150
+    engine.invalidate()
+    expect(engine.valueOf('HF.1.2', 'AAA', 2022)).toBe(300)
+  })
+
+  it('is blank, not a partial result, when an input is missing', () => {
+    // HF.4 is not reported in 2020.
+    const engine = withCells({ 'AAA|2020|HF.2': 'HF.4 + HF.3' })
+    expect(engine.valueOf('HF.2', 'AAA', 2020)).toBeNull()
+  })
+
+  it('refuses a formula that loops back into its own cell through a parent', () => {
+    // HF.1 sums HF.1.2, so HF.1.2 = HF.1 would count itself.
+    const check = withCells({}).validate('HF.1', { cell: at('HF.1.2') })
+    expect(check.ok).toBe(false)
+    expect(check.cycle).toEqual(['HF.1.2', 'HF.1', 'HF.1.2'])
+    expect(check.error?.kind).toBe('cycle')
+  })
+
+  it('refuses a loop that runs through a formula', () => {
+    // CHE sums HF.2 — and the formula swallowing the error must not hide it.
+    const check = withCells({}).validate('CHE / 2', { cell: at('HF.2') })
+    expect(check.cycle).toEqual(['HF.2', 'CHE', 'HF.2'])
+  })
+
+  it('refuses a loop between two typed cells', () => {
+    const check = withCells({ 'AAA|2022|HF.2': 'HF.3' }).validate('HF.2', { cell: at('HF.3') })
+    expect(check.cycle).toEqual(['HF.3', 'HF.2', 'HF.3'])
+  })
+
+  it('accepts a reference to its own parent in another year', () => {
+    const engine = withCells({})
+    expect(engine.validate('HF.1[year-1]', { cell: at('HF.1.2') }).ok).toBe(true)
+    expect(engine.validate('PREV(HF.1)', { cell: at('HF.1.2') }).ok).toBe(true)
+  })
+
+  it('leaves no trial values behind after validating', () => {
+    const engine = withCells({})
+    expect(engine.valueOf('HF.1', 'AAA', 2022)).toBe(210)
+    engine.validate('HF.1.1 * 10', { cell: at('HF.1.2') })
+    expect(engine.valueOf('HF.1', 'AAA', 2022)).toBe(210)
+    engine.invalidate()
+    expect(engine.valueOf('HF.1', 'AAA', 2022)).toBe(210)
+  })
+
+  it('blanks only the looping cell, not its parents, if a loop is already stored', () => {
+    const engine = withCells({ 'AAA|2022|HF.1.2': 'HF.1' })
+    expect(engine.valueOf('HF.1.2', 'AAA', 2022)).toBeNull()
+    // The parent sums what is left rather than going blank with it.
+    expect(engine.valueOf('HF.1', 'AAA', 2022)).toBe(140)
+    expect(engine.valueOf('CHE', 'AAA', 2022)).toBe(241)
+    expect(engine.valueOf('HF.3', 'AAA', 2022)).toBe(42)
+    // And the stored loop is still recognised as one.
+    expect(engine.validate('HF.1', { cell: at('HF.1.2') }).cycle).toEqual(['HF.1.2', 'HF.1', 'HF.1.2'])
+  })
+
+  it('does not let a stored loop through an indicator blank its other readers', () => {
+    // HF.2 = CHE / 2, and CHE sums HF.2. Reading the cell first is the order
+    // that used to cache CHE as blank for everything read after it.
+    const engine = withCells({ 'AAA|2022|HF.2': 'CHE / 2' })
+    expect(engine.valueOf('HF.2', 'AAA', 2022)).toBeNull()
+    // CHE without HF.2 is 210 + 42 + 30 + 1. The indicator is read before CHE
+    // itself, because reading CHE directly would recompute over a bad cache.
+    expect(engine.valueOf('CHE%GDP_SHA2011', 'AAA', 2022)).toBeCloseTo((283 / 2400) * 100, 9)
+    expect(engine.valueOf('CHE', 'AAA', 2022)).toBe(283)
+  })
+})

@@ -48,7 +48,10 @@ export function FormulaBar({ cell, rowLabel, engine, editable, onCommit }: Formu
   }, [cell])
 
   const isFormula = draft.trimStart().startsWith('=')
-  const check = isFormula && engine ? engine.validate(draft.trim().slice(1)) : null
+  const check =
+    isFormula && engine
+      ? engine.validate(draft.trim().slice(1), cell ? { cell: cell.coordinate } : undefined)
+      : null
   const readOnly = !editable || cell == null || cell.isCalculated
 
   return (

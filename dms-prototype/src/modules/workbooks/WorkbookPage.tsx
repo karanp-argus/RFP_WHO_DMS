@@ -182,7 +182,9 @@ export function WorkbookPage() {
 
       if (trimmed.startsWith('=')) {
         const expression = trimmed.slice(1).trim()
-        const check = engine?.validate(expression)
+        // Checked as a formula in *this* cell, so a loop back into it through a
+        // parent — `HF.1.2.1 = HF.1` — is refused rather than double-counted.
+        const check = engine?.validate(expression, { cell: cell.coordinate })
         if (check && !check.ok) {
           toast.error(
             check.cycle
@@ -318,6 +320,7 @@ export function WorkbookPage() {
 
       const changes: CellChange[] = []
       let skipped = 0
+      let circular = 0
 
       for (const placement of placements) {
         const rowKey = rows[placement.row]?.key
@@ -344,6 +347,11 @@ export function WorkbookPage() {
         }
         if (mode === 'formulas' && placement.cell.formula) {
           const expression = placement.cell.formula.replace(/^=/, '').trim()
+          // A formula that was sound where it was copied can loop where it lands.
+          if (engine?.validate(expression, { cell: cell.coordinate }).cycle) {
+            circular++
+            continue
+          }
           const value = engine
             ? evaluateExpression(engine, expression, cell.coordinate.iso3, cell.coordinate.year)
             : null
@@ -362,13 +370,19 @@ export function WorkbookPage() {
       }
 
       if (changes.length === 0) {
-        toast.info('Nothing to paste here — the target rows are all calculated.')
+        toast.info(
+          circular > 0
+            ? `Nothing pasted — ${circular} formulas would refer back to their own cells.`
+            : 'Nothing to paste here — the target rows are all calculated.',
+        )
         return
       }
       commit(`Paste ${changes.length} cells`, changes)
       invalidate()
       toast.success(
-        `Pasted ${changes.length} cells${skipped > 0 ? ` — ${skipped} calculated cells skipped` : ''}.`,
+        `Pasted ${changes.length} cells${skipped > 0 ? ` — ${skipped} calculated cells skipped` : ''}${
+          circular > 0 ? ` — ${circular} circular formulas refused` : ''
+        }.`,
       )
     },
     [activeCell, editable, rows, columns, effectiveRange, getCell, engine, commit, invalidate],

@@ -148,14 +148,15 @@ export function WorkbookCellComponent({
         'relative flex size-full items-center justify-end px-2 font-mono text-[length:var(--text-body-sm)] tabular-nums',
         // Blue = reported, pink = calculated. The legacy semantics, kept.
         cell.isCalculated ? 'bg-who-cell-indicator' : 'bg-who-cell-value',
-        // UC031: a formula cell reads differently — colour and italic.
+        // UC031: a formula cell shows its result, but reads differently —
+        // colour and italic. The terms are in the formula bar and the editor.
         isFormulaCell && 'text-who-cell-formula italic',
         cell.value == null && 'text-who-text-muted',
         // UC052 — QC findings ring the offending cell.
         finding?.severity === 'error' && 'ring-2 ring-who-fail ring-inset',
         finding?.severity === 'warning' && 'ring-2 ring-who-warn ring-inset',
       )}
-      title={finding?.message}
+      title={finding?.message ?? (isFormulaCell ? cell.formula : undefined)}
       onContextMenu={(e) => {
         // UC043/UC044 — right-click opens the version history for this
         // observation. Preventing the browser menu is the whole point: the
@@ -202,7 +203,7 @@ export function WorkbookCellComponent({
       ) : null}
 
       <span className="truncate">
-        {isFormulaCell ? cell.formula : formatCellValue(cell.value, scale)}
+        {formatCellValue(cell.value, scale)}
       </span>
     </div>
   )
